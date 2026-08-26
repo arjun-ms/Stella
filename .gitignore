@@ -1,0 +1,8 @@
+venv/
+ASSIGNMENT.md
+.env
+__pycache__/
+*.pyc
+sessions/
+logs/
+.gemini/
