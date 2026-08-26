@@ -49,15 +49,15 @@ class MeasurementData(BaseModel):
             if val is None:
                 return None, None
             u = (unit_str or default_unit or "inches").strip().lower()
-            if "m" == u or "meter" in u or "metre" in u:
-                # meters to cm and in
-                cm = round(val * 100.0, 1)
-                inch = round(val * 39.3701, 1)
-                return inch, cm
-            elif "cm" in u or "centimeter" in u or "centimetre" in u:
+            if "cm" in u or "centimeter" in u or "centimetre" in u:
                 # cm to in
                 cm = round(val, 1)
                 inch = round(val / 2.54, 1)
+                return inch, cm
+            elif u in ("m", "meter", "meters", "metre", "metres") or u.startswith("meter") or u.startswith("metre"):
+                # meters to cm and in
+                cm = round(val * 100.0, 1)
+                inch = round(val * 39.3701, 1)
                 return inch, cm
             else:
                 # assume inches by default
