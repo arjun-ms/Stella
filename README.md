@@ -36,6 +36,12 @@ python -m stella --resume <session-id>
 python -m stella --dump <session-id>
 ```
 
+### Run Test Suite
+
+```bash
+pytest -v
+```
+
 ---
 
 ## Key Features & Highlights
