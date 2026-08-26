@@ -1,8 +1,8 @@
 """Core agent loop for Stella - Size & Fit Advisor.
 
 Orchestrates the 4-question consultation flow: asking questions via the
-conversational prompt, extracting structured data, computing confidence,
-and generating the final recommendation.
+conversational prompt, extracting structured data, normalizing units,
+computing confidence, and generating the final recommendation.
 """
 
 from __future__ import annotations
@@ -12,13 +12,16 @@ from pathlib import Path
 
 from stella.config import get_settings
 from stella.display import (
+    console,
     display_confidence_bar,
     display_error,
     display_goodbye,
+    display_measurement_guide,
     display_recommendation,
     display_state_dump,
     display_stella_message,
     display_welcome,
+    get_expertise_choice,
     get_user_input,
 )
 from stella.llm import LLMClient
@@ -34,12 +37,12 @@ from stella.scoring import compute_confidence
 # Maps step number to (question context description, Pydantic model class, state attribute name)
 STEP_CONFIG: dict[int, tuple[str, type, str]] = {
     1: (
-        "Measurements and size history: asking about body measurements (bust, waist, hips) or typical dress size labels across brands",
+        "Measurements and size history: asking about body measurements (bust, waist, hips in inches, cm, or m) or typical dress size labels across brands",
         MeasurementData,
         "measurements",
     ),
     2: (
-        "Fit preference: how the user likes dresses to fit (fitted, flowy, structured, relaxed, etc.) and any body concerns",
+        "Fit preference: how the user likes dresses to fit (fitted, flowy, structured, relaxed, wrap, etc.) and any body concerns",
         FitPreferenceData,
         "fit_preference",
     ),
@@ -70,12 +73,18 @@ def _build_step_instruction(step: int, state: SessionState) -> str:
     """Build the user-facing instruction message for the conversational prompt."""
     context = STEP_CONFIG[step][0]
     attempt = state.attempts_per_step.get(step, 0)
+    expertise = state.user_expertise or "intermediate"
 
     # Summarize what we already know for context
     known_parts: list[str] = []
     if state.measurements and step > 1:
         m = state.measurements
-        known_parts.append(f"Measurements: size={m.usual_size}, bust={m.bust}, waist={m.waist}, hips={m.hips}")
+        known_parts.append(
+            f"Measurements: size={m.usual_size}, "
+            f"bust={m.bust_in}in ({m.bust_cm}cm), "
+            f"waist={m.waist_in}in ({m.waist_cm}cm), "
+            f"hips={m.hips_in}in ({m.hips_cm}cm)"
+        )
     if state.fit_preference and step > 2:
         known_parts.append(f"Fit preference: {state.fit_preference.preference}")
     if state.style_occasion and step > 3:
@@ -85,13 +94,17 @@ def _build_step_instruction(step: int, state: SessionState) -> str:
 
     if attempt == 0:
         return (
-            f"[STEP {step}/4] Ask the user about: {context}\n\n"
+            f"[STEP {step}/4]\n"
+            f"User Expertise Level: {expertise}\n"
+            f"Question Topic: {context}\n\n"
             f"Information collected so far:\n{known_summary}\n\n"
-            f"Ask your question naturally, acknowledging any previous answers."
+            f"Ask your question naturally, acknowledging any previous answers and calibrating your vocabulary to the user's expertise level."
         )
     else:
         return (
-            f"[STEP {step}/4 - FOLLOW-UP] The user's previous answer was vague or incomplete.\n"
+            f"[STEP {step}/4 - FOLLOW-UP]\n"
+            f"User Expertise Level: {expertise}\n"
+            f"The user's previous answer was vague or incomplete.\n"
             f"Topic: {context}\n\n"
             f"Politely probe for more specific details. Be warm and encouraging. "
             f"This is your last chance to ask about this topic before moving on."
@@ -139,9 +152,11 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
     llm = LLMClient()
     llm.set_session_id(state.session_id)
 
-    # Welcome message for new sessions
+    # Welcome & Onboarding for new sessions
     if state.current_step == 0:
         display_welcome()
+        if not state.user_expertise:
+            state.user_expertise = get_expertise_choice()
         state.current_step = 1
         save_session(state)
 
@@ -150,20 +165,28 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
         step = state.current_step
         question_context, model_class, attr_name = STEP_CONFIG[step]
 
+        # Display measurement reference guide when asking Q1
+        if step == 1 and state.attempts_per_step.get(1, 0) == 0:
+            display_measurement_guide()
+
         # Initialize attempt counter for this step
         if step not in state.attempts_per_step:
             state.attempts_per_step[step] = 0
 
-        # Generate Stella's question
+        # Generate Stella's question with interactive spinner
         instruction = _build_step_instruction(step, state)
         history = _get_chat_history(state)
 
-        try:
-            stella_response = llm.chat(step, instruction, history)
-        except Exception as e:
-            display_error(f"Failed to generate question: {e}")
-            save_session(state)
-            raise
+        with console.status(
+            f"[bold magenta]✨ Stella is preparing Question {step}/4...[/bold magenta]",
+            spinner="dots",
+        ):
+            try:
+                stella_response = llm.chat(step, instruction, history)
+            except Exception as e:
+                display_error(f"Failed to generate question: {e}")
+                save_session(state)
+                raise
 
         display_stella_message(stella_response)
         state.add_message("assistant", stella_response)
@@ -177,16 +200,24 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
 
         state.add_message("user", user_input)
 
-        # Extract structured data from the answer
+        # Extract structured data from the answer with spinner
         schema = model_class.model_json_schema()
-        try:
-            extracted_data = llm.extract(step, user_input, question_context, schema)
-        except Exception as e:
-            display_error(f"Failed to process answer: {e}")
-            # Move on with empty data rather than crashing
-            extracted_data = {"detail_level": "low"}
+        with console.status(
+            "[bold cyan]🔍 Analyzing your response & extracting styling details...[/bold cyan]",
+            spinner="dots",
+        ):
+            try:
+                extracted_data = llm.extract(step, user_input, question_context, schema)
+            except Exception as e:
+                display_error(f"Failed to process answer: {e}")
+                # Move on with empty data rather than crashing
+                extracted_data = {"detail_level": "low"}
 
         parsed = model_class.model_validate(extracted_data)
+
+        # If step 1 (measurements), perform deterministic Python unit normalization
+        if isinstance(parsed, MeasurementData):
+            parsed.normalize_measurements()
 
         # Check if we need to re-ask (vague answer, first attempt)
         state.attempts_per_step[step] = state.attempts_per_step.get(step, 0) + 1
@@ -207,9 +238,10 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
         state.current_step = step + 1
         save_session(state)
 
-    # Generate recommendation
+    # Generate recommendation with animated spinner
     state.current_step = 5
     profile = {
+        "user_expertise": state.user_expertise,
         "confidence_score": state.confidence,
         "measurements": state.measurements.model_dump() if state.measurements else None,
         "fit_preference": state.fit_preference.model_dump() if state.fit_preference else None,
@@ -218,12 +250,16 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
     }
     profile_json = json.dumps(profile, indent=2)
 
-    try:
-        recommendation = llm.recommend(5, profile_json)
-    except Exception as e:
-        display_error(f"Failed to generate recommendation: {e}")
-        save_session(state)
-        raise
+    with console.status(
+        "[bold magenta]✨ Stella is curating your personalized dress styling dossier & multi-unit sizing charts...[/bold magenta]",
+        spinner="dots",
+    ):
+        try:
+            recommendation = llm.recommend(5, profile_json)
+        except Exception as e:
+            display_error(f"Failed to generate recommendation: {e}")
+            save_session(state)
+            raise
 
     display_recommendation(recommendation, state.confidence)
     state.add_message("assistant", recommendation)

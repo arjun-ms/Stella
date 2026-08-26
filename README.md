@@ -1,6 +1,6 @@
 # Stella - AI Size & Fit Advisor
 
-A multi-turn CLI chatbot that guides users through a personalized dress sizing and styling consultation using AI. Stella asks 4 targeted questions, extracts structured data from each answer, builds confidence in her recommendation, and delivers a tailored size/silhouette/brand recommendation.
+A multi-turn CLI chatbot that guides users through a personalized dress sizing and styling consultation using AI. Stella asks 4 targeted questions, extracts structured data from each answer, normalizes mixed measurement units, dynamically adapts to user fashion expertise, builds confidence in her recommendation, and delivers a comprehensive size/silhouette/brand recommendation.
 
 ## Quick Start
 
@@ -38,6 +38,29 @@ python -m stella --dump <session-id>
 
 ---
 
+## Key Features & Highlights
+
+### 1. Tailored Expertise Onboarding (Step 0)
+At session launch, users select their background:
+- **[a] Professional / Industry Insider:** Technical styling vocabulary (darting, bias cut, ease, fabrication).
+- **[b] Fashion Novice:** Simple, welcoming, plain-language guidance without industry jargon.
+- **[c] Everyday Shopper:** Practical, actionable fit advice with intuitive explanations.
+
+### 2. Built-in Measurement Guide & Size Reference Table (Q1)
+- Rich terminal table displaying how to measure bust, waist, and hips.
+- Reference chart mapping XS–XL, US 0–18, and bust-waist-hips ranges in both inches and centimeters.
+- Clear support for off-the-rack size labels if physical measurements are unavailable.
+
+### 3. Deterministic Mixed-Unit Normalization & Multi-Unit Recommendations
+- Supports mixed inputs (e.g., *Bust: 90cm, Waist: 0.7m, Hips: 36 inches*).
+- Deterministic Python math normalizes all inputs into standardized dual representations (`inches` & `cm`).
+- Final recommendation provides complete multi-unit sizing (US, UK, EU, International Alpha XS-XL, and garment dimensions in both inches and cm).
+
+### 4. Interactive UX Loading Spinners
+- Rich `console.status` animated spinners during all AI reasoning and extraction turns prevent perceived UI freezes.
+
+---
+
 ## Model Choice
 
 **Model:** `gemini-2.5-flash` (Google Gemini)
@@ -59,10 +82,10 @@ stella/
 ├── __init__.py        # Package init
 ├── __main__.py        # CLI entry point (python -m stella)
 ├── agent.py           # Core agent loop and orchestration
-├── models.py          # Pydantic models (session state, extracted data)
-├── prompts.py         # Three system prompts
+├── models.py          # Pydantic models (session state, multi-unit data)
+├── prompts.py         # Three system prompts (conversation, extraction, recommendation)
 ├── scoring.py         # Confidence score computation
-├── display.py         # Rich-based terminal UI
+├── display.py         # Rich-based terminal UI, guide tables, & onboarding
 ├── llm.py             # Gemini API wrapper with tracing
 └── config.py          # Settings and env loading
 ```
@@ -74,64 +97,55 @@ Stella uses three separate system prompts, each with a distinct responsibility:
 #### 1. Conversational Prompt (`CONVERSATION_PROMPT`)
 
 Controls Stella's persona as a warm, knowledgeable personal stylist. This prompt:
+- Calibrates vocabulary to the user's selected expertise level (professional, novice, intermediate)
 - Defines the 4-question consultation flow and question ordering
-- Sets tone (warm, encouraging, professional, uses fashion vocabulary)
+- Explicitly welcomes measurements in any unit (inches, cm, or meters)
 - Instructs Stella to acknowledge previous answers before asking the next question
 - Limits re-asking to once per question on vague answers
 - Prohibits premature recommendations
-
-**Why separated:** The conversational prompt needs to be rich with persona instructions and behavioral rules. Mixing extraction logic here would create conflicting objectives (be natural vs. be precise).
 
 #### 2. Extraction Prompt (`EXTRACTION_PROMPT`)
 
 Zero-personality prompt for structured data extraction. This prompt:
 - Parses user answers into typed JSON matching Pydantic model schemas
+- Captures raw measurement values and per-field units (in, cm, m)
 - Classifies answer quality as `high`, `medium`, or `low` detail
 - Never hallucinates data the user didn't provide
 - Handles off-topic/nonsensical answers gracefully
-
-**Why separated:** Extraction needs deterministic, analytical behavior with low temperature (0.1). The conversational prompt needs creativity with higher temperature (0.7). These are fundamentally different objectives.
 
 #### 3. Recommendation Prompt (`RECOMMENDATION_PROMPT`)
 
 Expert stylist delivering the final recommendation. This prompt:
 - Synthesizes all collected profile data into actionable recommendations
-- Generates: size range, dress silhouette, brand tip, and reasoning
-- Calibrates confidence -- decisive when data is rich, broader when sparse
-- Maintains Stella's warm tone
-
-**Why separated:** The recommendation is a distinct task with different input (all 4 answers as structured data, not conversational history) and different output format. A dedicated prompt lets us inject the full profile as structured JSON context.
+- Generates: comprehensive multi-unit size breakdown (US, UK, EU, XS-XL, in, cm), dress silhouettes, brand tips, and styling rationale
+- Calibrates confidence and vocabulary to user background
 
 ### State Flow
 
 ```
-[Start] -> Welcome -> Q1 (Measurements)
+[Start] -> Welcome -> Step 0: Expertise Selection (a/b/c)
                        |
                        v
-                  Extract -> Low detail? -> Re-ask (max 1x)
-                       |                         |
-                       v                         v
-                  Update confidence         Accept & proceed
+            Step 1: Measurement Guide + Q1 (Measurements in in/cm/m)
                        |
                        v
-                  Q2 (Fit Preference) -> ... -> Q3 -> Q4
+                  Extract -> Unit Normalization (Python) -> Low detail? -> Re-ask (max 1x)
+                       |                                                |
+                       v                                                v
+                  Update confidence                                Accept & proceed
+                       |
+                       v
+            Step 2: Q2 (Fit Preference) -> Step 3: Q3 -> Step 4: Q4
                        |
                        v
                   [All data collected]
                        |
                        v
-                  Generate Recommendation
+                  Generate Multi-Unit Recommendation
                        |
                        v
-                  Display + Save + Goodbye
+                  Display + Save + State Dump + Goodbye
 ```
-
-Each turn involves:
-1. **Conversational call** (Prompt 1): Generate Stella's question
-2. **User input**: Read from terminal
-3. **Extraction call** (Prompt 2): Parse answer into structured JSON
-4. **Scoring**: Compute confidence based on detail level
-5. **Decision**: Re-ask if vague (max 2 attempts), or advance
 
 ### Confidence Scoring
 
@@ -149,8 +163,6 @@ Detail level multipliers:
 - **Medium** (0.6x): General but useful info ("usually a Medium")
 - **Low** (0.1x): Vague, off-topic, or no useful info
 
-**Why heuristic:** A rule-based score is transparent, fast, deterministic, and easy to explain. The evaluator can see exactly why confidence went up or down. LLM-judged scores add latency and are opaque.
-
 ---
 
 ## Handling Ambiguity
@@ -161,8 +173,6 @@ When a user gives a vague or incomplete answer (e.g., "I'm medium-ish"):
 2. **Second attempt:** If still vague, Stella accepts the answer and moves on with whatever info was provided
 3. **Confidence reflects it:** Vague answers contribute only 10% of that question's max points (via the `low` detail multiplier)
 4. **Recommendation adapts:** Low-confidence profiles get broader recommendations with more size tolerance
-
-The bot never crashes on bad input, never loops indefinitely, and never ignores what the user said.
 
 ---
 
@@ -190,21 +200,8 @@ Every API call is logged to `logs/trace_{session_id}.jsonl` with:
 
 ## Known Limitations
 
-- **Confidence score is gameable**: A user who gives specific-sounding but incorrect info (e.g., "my bust is 800 inches") will get high confidence. The extraction prompt tries to be faithful but doesn't validate physical plausibility.
-- **Brand recommendations are training-data-bound**: Gemini's knowledge of brand sizing may be outdated or incomplete. No live inventory or sizing database is consulted.
-- **No visual input**: Stella can't assess body type from photos, which a real stylist would consider.
-- **Scoped to women's dresses**: The system doesn't generalize to other clothing types, menswear, or accessories.
-- **No retailer-specific sizing**: Recommendations are general (US 6-8, A-line, etc.), not tied to specific retailers' size charts.
+- **Physical plausibility bounds**: A user who gives extreme numbers (e.g., "bust is 500 inches") is normalized mathematically without medical/anatomical sanity rejection.
+- **Brand recommendations are training-data-bound**: Gemini's knowledge of brand sizing may be outdated or incomplete. No live retailer inventory is queried.
+- **No visual input**: Stella can't assess body type from photos, which an in-person stylist might do.
+- **Scoped to women's dresses**: The system is specialized for women's dresses and does not generalize to menswear or suiting.
 - **Single language**: English only. Non-English answers may produce poor extraction results.
-- **Measurement unit handling is basic**: Supports inches and cm but doesn't auto-detect or validate plausible ranges.
-
----
-
-## Dependencies
-
-| Package | Purpose |
-|---|---|
-| `google-genai` | Gemini API SDK |
-| `pydantic` | Data models with validation and JSON serialization |
-| `python-dotenv` | Load `.env` configuration |
-| `rich` | Terminal UI (progress bars, panels, styled text) |

@@ -1,22 +1,91 @@
 """Data models for Stella - AI Size & Fit Advisor."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+UserExpertise = Literal["professional", "novice", "intermediate"]
+
 
 class MeasurementData(BaseModel):
-    """Extracted data from Question 1: Measurements and sizing history."""
+    """Extracted and normalized data from Question 1: Measurements and sizing history."""
 
+    # Raw extracted values
+    bust_value: float | None = None
+    bust_unit: str | None = None  # "in", "inches", "cm", "m", etc.
+    waist_value: float | None = None
+    waist_unit: str | None = None
+    hips_value: float | None = None
+    hips_unit: str | None = None
+
+    # Normalized values in inches
+    bust_in: float | None = None
+    waist_in: float | None = None
+    hips_in: float | None = None
+
+    # Normalized values in centimeters
+    bust_cm: float | None = None
+    waist_cm: float | None = None
+    hips_cm: float | None = None
+
+    # Primary fields for backward compatibility
     bust: float | None = None
     waist: float | None = None
     hips: float | None = None
     unit: str = "inches"
+
     usual_size: str | None = None
     size_brand_ref: str | None = None
     detail_level: Literal["high", "medium", "low"] = "low"
+
+    def normalize_measurements(self) -> None:
+        """Convert any mixed units (m, cm, inches) into standardized inches and cm."""
+
+        def _to_in_and_cm(val: float | None, unit_str: str | None, default_unit: str) -> tuple[float | None, float | None]:
+            if val is None:
+                return None, None
+            u = (unit_str or default_unit or "inches").strip().lower()
+            if "m" == u or "meter" in u or "metre" in u:
+                # meters to cm and in
+                cm = round(val * 100.0, 1)
+                inch = round(val * 39.3701, 1)
+                return inch, cm
+            elif "cm" in u or "centimeter" in u or "centimetre" in u:
+                # cm to in
+                cm = round(val, 1)
+                inch = round(val / 2.54, 1)
+                return inch, cm
+            else:
+                # assume inches by default
+                inch = round(val, 1)
+                cm = round(val * 2.54, 1)
+                return inch, cm
+
+        # Fallback if raw was passed directly into bust/waist/hips
+        b_val = self.bust_value if self.bust_value is not None else self.bust
+        w_val = self.waist_value if self.waist_value is not None else self.waist
+        h_val = self.hips_value if self.hips_value is not None else self.hips
+
+        b_in, b_cm = _to_in_and_cm(b_val, self.bust_unit, self.unit)
+        w_in, w_cm = _to_in_and_cm(w_val, self.waist_unit, self.unit)
+        h_in, h_cm = _to_in_and_cm(h_val, self.hips_unit, self.unit)
+
+        self.bust_in = b_in
+        self.bust_cm = b_cm
+        self.waist_in = w_in
+        self.waist_cm = w_cm
+        self.hips_in = h_in
+        self.hips_cm = h_cm
+
+        # Keep primary fields updated in inches
+        self.bust = b_in
+        self.waist = w_in
+        self.hips = h_in
+        self.unit = "inches"
 
 
 class FitPreferenceData(BaseModel):
@@ -58,6 +127,7 @@ class SessionState(BaseModel):
     session_id: str = Field(default_factory=lambda: uuid4().hex[:8])
     current_step: int = 0
     confidence: float = 0.0
+    user_expertise: UserExpertise | None = None
     measurements: MeasurementData | None = None
     fit_preference: FitPreferenceData | None = None
     style_occasion: StyleOccasionData | None = None
@@ -87,6 +157,7 @@ class SessionState(BaseModel):
         sections = [
             f"=== Session State [{self.session_id}] ===",
             f"Current Step: {self.current_step}/5",
+            f"User Expertise: {self.user_expertise or 'Not selected'}",
             f"Confidence: {self.confidence:.1f}%",
             f"Created At: {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
             f"Updated At: {self.updated_at.strftime('%Y-%m-%d %H:%M:%S')}",
@@ -96,12 +167,21 @@ class SessionState(BaseModel):
         if self.measurements:
             m = self.measurements
             meas_parts = []
-            if m.bust is not None:
+            if m.bust_in is not None and m.bust_cm is not None:
+                meas_parts.append(f"Bust: {m.bust_in} in ({m.bust_cm} cm)")
+            elif m.bust is not None:
                 meas_parts.append(f"Bust: {m.bust} {m.unit}")
-            if m.waist is not None:
+
+            if m.waist_in is not None and m.waist_cm is not None:
+                meas_parts.append(f"Waist: {m.waist_in} in ({m.waist_cm} cm)")
+            elif m.waist is not None:
                 meas_parts.append(f"Waist: {m.waist} {m.unit}")
-            if m.hips is not None:
+
+            if m.hips_in is not None and m.hips_cm is not None:
+                meas_parts.append(f"Hips: {m.hips_in} in ({m.hips_cm} cm)")
+            elif m.hips is not None:
                 meas_parts.append(f"Hips: {m.hips} {m.unit}")
+
             meas_summary = ", ".join(meas_parts) if meas_parts else "None specified"
             sections.append(f"  - Body: {meas_summary}")
             sections.append(f"  - Usual Size: {m.usual_size or 'N/A'} (Brand Ref: {m.size_brand_ref or 'N/A'})")

@@ -1,17 +1,23 @@
 """Terminal UI display module for Stella using the Rich library.
 
 Provides styled rendering of welcome banners, dynamic confidence progress bars,
-stylist messages, recommendations, state dumps, and graceful user input handling.
+measurement reference guides, stylist messages, recommendations, state dumps,
+and user onboarding.
 """
 
 from __future__ import annotations
+
+from typing import Literal
 
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.table import Table
 from rich.text import Text
+
+from stella.models import UserExpertise
 
 # Module-level Console singleton
 console: Console = Console()
@@ -26,7 +32,7 @@ def display_welcome() -> None:
         "flattering silhouettes, and personalized brand recommendations:\n\n",
         style="white",
     )
-    welcome_text.append("  1. Measurements & Size History\n", style="cyan")
+    welcome_text.append("  1. Measurements & Size History (in, cm, or m)\n", style="cyan")
     welcome_text.append("  2. Fit Preferences & Body Silhouette\n", style="cyan")
     welcome_text.append("  3. Style Aesthetic & Event Occasion\n", style="cyan")
     welcome_text.append("  4. Past Purchase Success & What Fit Well\n\n", style="cyan")
@@ -46,6 +52,114 @@ def display_welcome() -> None:
     console.print()
     console.print(panel)
     console.print()
+
+
+def get_expertise_choice() -> UserExpertise:
+    """Prompt the user to select their fashion/clothing background at onboarding.
+
+    Returns:
+        UserExpertise: One of "professional", "novice", or "intermediate".
+    """
+    menu_text = Text()
+    menu_text.append("Before we begin, how would you describe your background with fashion and fit?\n\n", style="white")
+    menu_text.append("  [a] Professional / Industry Insider ", style="bold cyan")
+    menu_text.append("- I know fashion terminology, cuts, silhouettes, and fabric types.\n", style="dim")
+    menu_text.append("  [b] Fashion Novice ", style="bold cyan")
+    menu_text.append("- I know little about fashion terms; please keep explanations simple and intuitive.\n", style="dim")
+    menu_text.append("  [c] Everyday Shopper ", style="bold cyan")
+    menu_text.append("- I know what fits my body in practice, but don't know industry buzzwords.", style="dim")
+
+    panel = Panel(
+        menu_text,
+        title="[bold magenta]👗 Personalize Your Styling Experience[/bold magenta]",
+        border_style="magenta",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print(panel)
+    console.print()
+
+    mapping: dict[str, UserExpertise] = {
+        "a": "professional",
+        "b": "novice",
+        "c": "intermediate",
+        "1": "professional",
+        "2": "novice",
+        "3": "intermediate",
+    }
+
+    while True:
+        choice = Prompt.ask(
+            "[bold cyan]Select an option[/bold cyan] [magenta](a/b/c)[/magenta]",
+            choices=["a", "b", "c", "1", "2", "3"],
+            default="c",
+        ).strip().lower()
+
+        if choice in mapping:
+            selected = mapping[choice]
+            labels = {
+                "professional": "Professional / Fashion Insider",
+                "novice": "Fashion Novice (Simple, plain-language guidance)",
+                "intermediate": "Everyday Shopper (Practical fit advice)",
+            }
+            console.print(f"[green]✓ Profile set to:[/green] [bold magenta]{labels[selected]}[/bold magenta]\n")
+            return selected
+
+
+def display_measurement_guide() -> None:
+    """Display a reference table showing how to measure and standard size mappings."""
+    guide_table = Table(
+        title="[bold magenta]📏 Measurement Guide & Size Reference Chart[/bold magenta]",
+        box=box.ROUNDED,
+        border_style="magenta",
+        header_style="bold cyan",
+        show_lines=True,
+    )
+
+    guide_table.add_column("Size (Alpha / US)", justify="center", style="bold white")
+    guide_table.add_column("Bust", justify="center")
+    guide_table.add_column("Waist", justify="center")
+    guide_table.add_column("Hips", justify="center")
+    guide_table.add_column("How to Measure", style="dim")
+
+    guide_table.add_row(
+        "XS (US 0–2)",
+        '31–32" (79–82 cm)',
+        '24–25" (61–64 cm)',
+        '34–35" (86–89 cm)',
+        "Measure around the fullest part of your chest with a relaxed breath.",
+    )
+    guide_table.add_row(
+        "S (US 4–6)",
+        '33–35" (84–89 cm)',
+        '26–28" (66–71 cm)',
+        '36–38" (91–97 cm)',
+        "Measure around your natural waistline (narrowest part, above navel).",
+    )
+    guide_table.add_row(
+        "M (US 8–10)",
+        '36–38" (91–97 cm)',
+        '29–31" (74–79 cm)',
+        '39–41" (99–104 cm)',
+        "Measure around the fullest part of your hips/seat with feet together.",
+    )
+    guide_table.add_row(
+        "L (US 12–14)",
+        '39–42" (99–107 cm)',
+        '32–35" (81–89 cm)',
+        '42–45" (107–114 cm)',
+        "Keep the tape snug and parallel to the floor (don't pull too tight).",
+    )
+    guide_table.add_row(
+        "XL (US 16–18)",
+        '43–46" (109–117 cm)',
+        '36–39" (91–99 cm)',
+        '46–49" (117–125 cm)',
+        "If you don't have a tape measure, simply share your typical brand size!",
+    )
+
+    console.print(guide_table)
+    console.print("[dim]💡 Tip: You can provide numbers in [bold cyan]inches (in)[/bold cyan], [bold cyan]centimeters (cm)[/bold cyan], or [bold cyan]meters (m)[/bold cyan]. Stella will normalize them automatically.[/dim]\n")
 
 
 def display_confidence_bar(confidence: float, step: int) -> None:
@@ -207,9 +321,11 @@ __all__ = [
     "display_confidence_bar",
     "display_error",
     "display_goodbye",
+    "display_measurement_guide",
     "display_recommendation",
     "display_state_dump",
     "display_stella_message",
     "display_welcome",
+    "get_expertise_choice",
     "get_user_input",
 ]
