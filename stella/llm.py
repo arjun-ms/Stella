@@ -1,13 +1,14 @@
-"""Gemini API wrapper with call tracing and logging for Stella.
+"""Gemini API wrapper with call tracing, logging, and rate-limit backoff for Stella.
 
 Provides an LLMClient that wraps the google-genai SDK, handling conversation,
 structured data extraction, and recommendation generation with per-call
-latency and token usage logging.
+latency, token usage logging, and resilient exponential backoff on 429 quota limits.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,7 +21,7 @@ from stella.prompts import CONVERSATION_PROMPT, EXTRACTION_PROMPT, RECOMMENDATIO
 
 
 class LLMClient:
-    """Wrapper around the Gemini API with tracing support."""
+    """Wrapper around the Gemini API with tracing and rate-limit backoff support."""
 
     def __init__(self) -> None:
         settings = get_settings()
@@ -61,6 +62,40 @@ class LLMClient:
         with open(self._log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
 
+    def _generate_with_retry(
+        self,
+        contents: list[types.Content],
+        config: types.GenerateContentConfig,
+        max_retries: int = 6,
+    ) -> types.GenerateContentResponse:
+        """Call Gemini API with automatic exponential backoff on 429 quota limits or 503 transient errors."""
+        attempt = 0
+        while True:
+            try:
+                return self._client.models.generate_content(
+                    model=self._model,
+                    contents=contents,
+                    config=config,
+                )
+            except Exception as e:
+                err_msg = str(e)
+                attempt += 1
+                is_rate_limit = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "Quota exceeded" in err_msg
+                is_transient = "503" in err_msg or "UNAVAILABLE" in err_msg or "500" in err_msg or "502" in err_msg or "high demand" in err_msg
+
+                if (is_rate_limit or is_transient) and attempt <= max_retries:
+                    # Extract suggested delay if present (e.g. 'retry in 7.5s')
+                    match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_msg, re.IGNORECASE)
+                    if match:
+                        sleep_s = float(match.group(1)) + 1.5
+                    elif is_rate_limit:
+                        sleep_s = 7.0 * (1.4 ** (attempt - 1))
+                    else:
+                        sleep_s = 4.0 * (1.5 ** (attempt - 1))
+                    time.sleep(sleep_s)
+                else:
+                    raise
+
     def _build_contents(
         self, history: list[dict], user_message: str
     ) -> list[types.Content]:
@@ -87,27 +122,15 @@ class LLMClient:
         return contents
 
     def chat(self, step: int, user_message: str, history: list[dict]) -> str:
-        """Generate a conversational response from Stella.
-
-        Args:
-            step: Current consultation step (1-4).
-            user_message: The instruction/context message for this turn.
-            history: Prior conversation messages as {role, content} dicts.
-
-        Returns:
-            The model's text response.
-        """
+        """Generate a conversational response from Stella."""
         contents = self._build_contents(history, user_message)
+        config = types.GenerateContentConfig(
+            system_instruction=CONVERSATION_PROMPT,
+            temperature=0.7,
+        )
 
         start = time.perf_counter()
-        response = self._client.models.generate_content(
-            model=self._model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=CONVERSATION_PROMPT,
-                temperature=0.7,
-            ),
-        )
+        response = self._generate_with_retry(contents, config)
         latency_ms = (time.perf_counter() - start) * 1000
 
         self._log_call("conversation", step, latency_ms, response)
@@ -120,17 +143,7 @@ class LLMClient:
         question_context: str,
         schema: dict,
     ) -> dict:
-        """Extract structured data from a user's answer.
-
-        Args:
-            step: Current consultation step (1-4).
-            user_answer: The raw user response text.
-            question_context: Description of which question was asked.
-            schema: JSON schema dict for the expected response format.
-
-        Returns:
-            Parsed JSON dict matching the provided schema.
-        """
+        """Extract structured data from a user's answer."""
         prompt = (
             f"Question context: {question_context}\n\n"
             f"User's answer: {user_answer}\n\n"
@@ -143,35 +156,27 @@ class LLMClient:
                 parts=[types.Part(text=prompt)],
             )
         ]
+        config = types.GenerateContentConfig(
+            system_instruction=EXTRACTION_PROMPT,
+            response_mime_type="application/json",
+            response_schema=schema,
+            temperature=0.1,
+        )
 
         start = time.perf_counter()
-        response = self._client.models.generate_content(
-            model=self._model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=EXTRACTION_PROMPT,
-                response_mime_type="application/json",
-                response_schema=schema,
-                temperature=0.1,
-            ),
-        )
+        response = self._generate_with_retry(contents, config)
         latency_ms = (time.perf_counter() - start) * 1000
 
         self._log_call("extraction", step, latency_ms, response)
 
         raw_text = response.text or "{}"
-        return json.loads(raw_text)
+        try:
+            return json.loads(raw_text)
+        except Exception:
+            return {"detail_level": "low"}
 
     def recommend(self, step: int, profile_json: str) -> str:
-        """Generate the final dress recommendation.
-
-        Args:
-            step: Step number (5 for recommendation).
-            profile_json: JSON string of all collected profile data.
-
-        Returns:
-            The recommendation text from Stella.
-        """
+        """Generate the final dress recommendation."""
         prompt = (
             f"Here is the complete client profile collected during our consultation:\n\n"
             f"{profile_json}\n\n"
@@ -184,16 +189,13 @@ class LLMClient:
                 parts=[types.Part(text=prompt)],
             )
         ]
+        config = types.GenerateContentConfig(
+            system_instruction=RECOMMENDATION_PROMPT,
+            temperature=0.6,
+        )
 
         start = time.perf_counter()
-        response = self._client.models.generate_content(
-            model=self._model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=RECOMMENDATION_PROMPT,
-                temperature=0.6,
-            ),
-        )
+        response = self._generate_with_retry(contents, config)
         latency_ms = (time.perf_counter() - start) * 1000
 
         self._log_call("recommendation", step, latency_ms, response)

@@ -137,11 +137,15 @@ def save_transcript(state: SessionState) -> Path:
     return path
 
 
-def run_consultation(state: SessionState | None = None) -> SessionState:
+def run_consultation(
+    state: SessionState | None = None,
+    input_fn: callable | None = None,
+) -> SessionState:
     """Run the full 4-question consultation flow.
 
     Args:
-        state: Optional existing session to resume. If None, starts fresh.
+        state: Optional existing session to resume or pre-configure.
+        input_fn: Optional callable for feeding user input programmatically.
 
     Returns:
         The final SessionState with recommendation delivered.
@@ -156,7 +160,10 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
     if state.current_step == 0:
         display_welcome()
         if not state.user_expertise:
-            state.user_expertise = get_expertise_choice()
+            if input_fn is not None:
+                state.user_expertise = "intermediate"
+            else:
+                state.user_expertise = get_expertise_choice()
         state.current_step = 1
         save_session(state)
 
@@ -186,13 +193,13 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
             except Exception as e:
                 display_error(f"Failed to generate question: {e}")
                 save_session(state)
-                raise
+                return state
 
         display_stella_message(stella_response)
         state.add_message("assistant", stella_response)
 
         # Get user input
-        user_input = get_user_input()
+        user_input = input_fn() if input_fn is not None else get_user_input()
         if not user_input:
             # User interrupted or EOF
             save_session(state)
@@ -259,7 +266,7 @@ def run_consultation(state: SessionState | None = None) -> SessionState:
         except Exception as e:
             display_error(f"Failed to generate recommendation: {e}")
             save_session(state)
-            raise
+            return state
 
     display_recommendation(recommendation, state.confidence)
     state.add_message("assistant", recommendation)

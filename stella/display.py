@@ -7,6 +7,7 @@ and user onboarding.
 
 from __future__ import annotations
 
+import sys
 from typing import Literal
 
 from rich import box
@@ -19,8 +20,16 @@ from rich.text import Text
 
 from stella.models import UserExpertise
 
+# Ensure UTF-8 output encoding across Windows terminals
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Module-level Console singleton
-console: Console = Console()
+console: Console = Console(force_terminal=True, legacy_windows=False)
 
 
 def display_welcome() -> None:

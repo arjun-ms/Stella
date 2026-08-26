@@ -25,7 +25,7 @@ class Settings(BaseModel):
         description="Google Gemini API key loaded from GOOGLE_API_KEY environment variable",
     )
     model_name: str = Field(
-        default="gemini-2.5-flash",
+        default="gemini-3.5-flash",
         description="Gemini model identifier to use for LLM interactions",
     )
     sessions_dir: Path = Field(
@@ -58,7 +58,7 @@ def get_settings() -> Settings:
             "Please create a .env file (see .env.example) or export GOOGLE_API_KEY."
         )
 
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     sessions_dir = Path(os.getenv("STELLA_SESSIONS_DIR", "sessions"))
     logs_dir = Path(os.getenv("STELLA_LOGS_DIR", "logs"))
 
