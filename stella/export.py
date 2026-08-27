@@ -54,14 +54,10 @@ def export_html_dossier(state: SessionState, output_dir: Path | str = Path("expo
         if not recommendation_text and state.conversation_history:
             recommendation_text = state.conversation_history[-1].content
 
-    # Convert basic markdown formatting in recommendation text to clean HTML
-    formatted_rec = html.escape(recommendation_text)
-    formatted_rec = formatted_rec.replace("\n\n", "<br><br>").replace("\n", "<br>")
-    # Simple bold formatting
-    import re
-    formatted_rec = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", formatted_rec)
-    formatted_rec = re.sub(r"(^|<br>)###\s+(.+?)(?=<br>|$)", r"\1<h3 class='rec-heading'>\2</h3>", formatted_rec)
-    formatted_rec = re.sub(r"(^|<br>)(?:-|\*)\s+(.+?)(?=<br>|$)", r"\1<li class='rec-bullet'>\2</li>", formatted_rec)
+    # Parse markdown properly to support tables, lists, and bold text
+    from markdown_it import MarkdownIt
+    md = MarkdownIt("commonmark").enable("table")
+    formatted_rec = md.render(recommendation_text)
 
     confidence = round(state.confidence, 1)
     confidence_color = "#10b981" if confidence >= 80 else ("#f59e0b" if confidence >= 50 else "#ef4444")
@@ -261,19 +257,44 @@ def export_html_dossier(state: SessionState, output_dir: Path | str = Path("expo
       margin-bottom: 2rem;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }}
-    .rec-heading {{
+    .recommendation-card h3 {{
       font-family: var(--font-serif);
       font-size: 1.35rem;
       color: #f48fb1;
-      margin: 1.25rem 0 0.75rem 0;
+      margin: 1.5rem 0 0.75rem 0;
     }}
-    .rec-heading:first-child {{
+    .recommendation-card h3:first-child {{
       margin-top: 0;
     }}
-    .rec-bullet {{
+    .recommendation-card ul {{
       margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }}
+    .recommendation-card li {{
       margin-bottom: 0.5rem;
       color: #f3f4f6;
+    }}
+    .recommendation-card table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      overflow: hidden;
+    }}
+    .recommendation-card th, .recommendation-card td {{
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.9rem;
+    }}
+    .recommendation-card th {{
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      background: rgba(255,255,255,0.05);
     }}
     .footer {{
       text-align: center;
