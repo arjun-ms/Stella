@@ -143,3 +143,28 @@ def test_failure_mode_5_model_fallback_cascade_on_quota_depletion():
         assert "Switching" in printed_all or "fallback" in printed_all.lower()
 
 
+def test_failure_mode_6_all_models_quota_exhausted_graceful_exit():
+    """Behavior 6: When ALL models in cascade exhaust their quota,
+    the agent catches the error, displays an informative quota-exhaustion banner,
+    safely saves session state to disk, and exits without unhandled crash."""
+    state = SessionState(user_expertise="novice")
+
+    with patch("stella.agent.LLMClient") as mock_client_cls, \
+         patch("stella.agent.display_quota_exhausted") as mock_quota_display:
+
+        mock_client = MagicMock()
+        mock_client.chat.side_effect = RuntimeError("429 RESOURCE_EXHAUSTED: Daily quota exhausted for all models")
+        mock_client_cls.return_value = mock_client
+
+        # Run consultation
+        result_state = run_consultation(state=state, input_fn=lambda: "bust 34")
+
+        # Verify state was preserved and returned
+        assert result_state is not None
+        assert result_state.current_step == 1
+        # Verify friendly quota notice was called with session id
+        assert mock_quota_display.called
+        assert mock_quota_display.call_args[0][0] == state.session_id
+
+
+

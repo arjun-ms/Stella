@@ -307,6 +307,26 @@ def display_error(message: str) -> None:
     console.print()
 
 
+def display_quota_exhausted(session_id: str) -> None:
+    """Display an informative, styled notice when all models exhaust daily quotas."""
+    msg = Text()
+    msg.append("⚠️  All available Gemini AI models have temporarily exhausted their daily quota.\n\n", style="bold yellow")
+    msg.append("✨ Don't worry! Your consultation progress has been safely saved to disk:\n", style="white")
+    msg.append(f"   Session ID: {session_id}\n\n", style="bold cyan")
+    msg.append("You can resume this consultation anytime by starting the CLI again after quota resets, or by updating your GOOGLE_API_KEY.", style="dim")
+
+    panel = Panel(
+        msg,
+        title="[bold yellow]API Daily Quota Reached[/bold yellow]",
+        border_style="yellow",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print()
+    console.print(panel)
+    console.print()
+
+
 def display_goodbye() -> None:
     """Display a styled farewell message when the session ends."""
     goodbye_text = Text(
@@ -331,6 +351,7 @@ __all__ = [
     "display_error",
     "display_goodbye",
     "display_measurement_guide",
+    "display_quota_exhausted",
     "display_recommendation",
     "display_state_dump",
     "display_stella_message",

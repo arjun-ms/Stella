@@ -17,6 +17,7 @@ from stella.display import (
     display_error,
     display_goodbye,
     display_measurement_guide,
+    display_quota_exhausted,
     display_recommendation,
     display_state_dump,
     display_stella_message,
@@ -191,7 +192,11 @@ def run_consultation(
             try:
                 stella_response = llm.chat(step, instruction, history)
             except Exception as e:
-                display_error(f"Failed to generate question: {e}")
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                    display_quota_exhausted(state.session_id)
+                else:
+                    display_error(f"Failed to generate question: {e}")
                 save_session(state)
                 return state
 
@@ -264,7 +269,11 @@ def run_consultation(
         try:
             recommendation = llm.recommend(5, profile_json)
         except Exception as e:
-            display_error(f"Failed to generate recommendation: {e}")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                display_quota_exhausted(state.session_id)
+            else:
+                display_error(f"Failed to generate recommendation: {e}")
             save_session(state)
             return state
 
