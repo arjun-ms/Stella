@@ -43,6 +43,13 @@ python -m stella --export <session-id>
 ```
 *Generates a self-contained, responsive, print-ready HTML Lookbook Dossier in `exports/dossier_<id>.html`.*
 
+### Launch Streamlit Web UI (Bonus)
+
+```bash
+streamlit run streamlit_app.py
+```
+*Launches an interactive browser UI with real-time confidence gauge, extracted measurement cards, chat bubbles, and instant dossier download.*
+
 ### Run Test Suite
 
 ```bash
