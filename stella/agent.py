@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from stella.config import get_settings
+from stella.config import ensure_api_key_configured, get_settings
 from stella.display import (
     console,
     display_confidence_bar,
@@ -175,6 +175,7 @@ def run_consultation(
     if state is None:
         state = SessionState()
 
+    ensure_api_key_configured(input_fn)
     llm = LLMClient()
     llm.set_session_id(state.session_id)
 

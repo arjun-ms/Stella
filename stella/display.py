@@ -378,6 +378,32 @@ def display_invalid_measurements_termination(session_id: str) -> None:
     console.print()
 
 
+def display_api_key_prompt() -> None:
+    """Display guidance on acquiring and configuring a Google Gemini API key."""
+    msg = Text()
+    msg.append("🔑 Google Gemini API Key Required\n\n", style="bold yellow")
+    msg.append(
+        "To start your personalized dress styling consultation, Stella requires a free Google Gemini API key.\n\n",
+        style="white",
+    )
+    msg.append("How to get your free API key in 30 seconds:\n", style="bold cyan")
+    msg.append("  1. Open: https://aistudio.google.com/app/apikey\n", style="white")
+    msg.append("  2. Sign in with your Google account\n", style="white")
+    msg.append("  3. Click \"Create API key\" and copy your key\n\n", style="white")
+    msg.append("Paste your API key below (it will be saved to your local .env file automatically):", style="italic white")
+
+    panel = Panel(
+        msg,
+        title="[bold yellow]API Key Setup[/bold yellow]",
+        border_style="yellow",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print()
+    console.print(panel)
+    console.print()
+
+
 def display_goodbye() -> None:
     """Display a styled farewell message when the session ends."""
     goodbye_text = Text(
@@ -398,6 +424,7 @@ def display_goodbye() -> None:
 
 __all__ = [
     "console",
+    "display_api_key_prompt",
     "display_confidence_bar",
     "display_error",
     "display_goodbye",

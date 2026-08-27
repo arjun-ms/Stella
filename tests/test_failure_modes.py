@@ -1,6 +1,7 @@
 """TDD Suite for Failure Modes, Error Recovery, and Edge Cases in Stella."""
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
 
@@ -282,6 +283,36 @@ def test_missing_unit_triggers_followup_confirmation():
         assert final_state.attempts_per_step[1] == 2
         assert final_state.measurements.bust_in == 34.0
         assert final_state.measurements.bust_cm == 86.4
+
+
+def test_interactive_api_key_prompt_and_env_save(tmp_path: Path, monkeypatch):
+    """Behavior 10: When API key is not present in environment, Stella prompts the user
+    with setup instructions, saves the key to .env, and populates the settings."""
+    from stella.config import ensure_api_key_configured, get_settings
+
+    # Clear any existing env variables
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    get_settings.cache_clear()
+
+    # Change working directory to tmp_path for .env writing
+    monkeypatch.chdir(tmp_path)
+
+    with patch("stella.display.display_api_key_prompt") as mock_prompt:
+        key = ensure_api_key_configured(input_fn=lambda: "AIzaSyFakeKeyForTest123")
+
+        assert mock_prompt.called
+        assert key == "AIzaSyFakeKeyForTest123"
+
+        # Verify .env was written
+        env_file = tmp_path / ".env"
+        assert env_file.exists()
+        assert "GOOGLE_API_KEY=AIzaSyFakeKeyForTest123" in env_file.read_text(encoding="utf-8")
+
+        # Verify get_settings() loads it
+        settings = get_settings()
+        assert settings.api_key == "AIzaSyFakeKeyForTest123"
+
 
 
 
