@@ -249,10 +249,9 @@ def main():
                     data=html_data,
                     file_name=f"stella_dossier_{state.session_id}.html",
                     mime="text/html",
-                    use_container_width=True,
                 )
 
-        if st.button("🔄 Start New Consultation", use_container_width=True):
+        if st.button("🔄 Start New Consultation"):
             st.session_state.clear()
             st.rerun()
 
