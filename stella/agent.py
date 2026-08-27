@@ -325,6 +325,10 @@ def run_consultation(
     # Save everything
     save_session(state)
     transcript_path = save_transcript(state)
+    from stella.export import export_html_dossier
+    dossier_path = export_html_dossier(state)
+
+    console.print(f"\n[bold green]📁 HTML Styling Dossier exported:[/bold green] [cyan]{dossier_path}[/cyan]\n")
 
     # Show final state dump
     display_state_dump(state.state_dump())

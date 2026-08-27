@@ -36,6 +36,13 @@ python -m stella --resume <session-id>
 python -m stella --dump <session-id>
 ```
 
+### Export Standalone HTML Styling Dossier
+
+```bash
+python -m stella --export <session-id>
+```
+*Generates a self-contained, responsive, print-ready HTML Lookbook Dossier in `exports/dossier_<id>.html`.*
+
 ### Run Test Suite
 
 ```bash

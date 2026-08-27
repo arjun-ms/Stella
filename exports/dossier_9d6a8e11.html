@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stella Styling Dossier • 9d6a8e11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #c2185b;
+      --primary-light: #fce4ec;
+      --accent: #880e4f;
+      --bg: #0f1117;
+      --surface: #181b24;
+      --surface-border: #282d3d;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 2.5rem 1rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .header-card {
+      background: linear-gradient(135deg, #241424 0%, #151824 100%);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .header-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(194, 24, 91, 0.25) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+    }
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .brand-subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e5e7eb;
+    }
+    .badge-primary {
+      background: rgba(194, 24, 91, 0.2);
+      border-color: rgba(194, 24, 91, 0.4);
+      color: #f48fb1;
+    }
+    .confidence-section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .confidence-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .confidence-bar-bg {
+      background: rgba(255, 255, 255, 0.08);
+      height: 10px;
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    .confidence-bar-fill {
+      height: 100%;
+      background: #10b981;
+      width: 100.0%;
+      border-radius: 9999px;
+      transition: width 0.6s ease;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 14px;
+      padding: 1.75rem;
+    }
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--surface-border);
+    }
+    .measurements-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .measurements-table th, .measurements-table td {
+      padding: 0.75rem 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.9rem;
+    }
+    .measurements-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+    .measurements-table td.val {
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    .detail-item {
+      margin-bottom: 1rem;
+    }
+    .detail-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+    .detail-value {
+      font-size: 0.95rem;
+      color: #e5e7eb;
+    }
+    .recommendation-card {
+      background: linear-gradient(180deg, #1f1a29 0%, #151824 100%);
+      border: 2px solid rgba(194, 24, 91, 0.4);
+      border-radius: 16px;
+      padding: 2.25rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    .rec-heading {
+      font-family: var(--font-serif);
+      font-size: 1.35rem;
+      color: #f48fb1;
+      margin: 1.25rem 0 0.75rem 0;
+    }
+    .rec-heading:first-child {
+      margin-top: 0;
+    }
+    .rec-bullet {
+      margin-left: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #f3f4f6;
+    }
+    .footer {
+      text-align: center;
+      padding: 2rem 0;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--surface-border);
+    }
+    @media print {
+      body {
+        background: #fff;
+        color: #111;
+        padding: 0;
+      }
+      .card, .header-card, .confidence-section, .recommendation-card {
+        border: 1px solid #ccc;
+        box-shadow: none;
+        background: #fff;
+        color: #111;
+      }
+      .brand-title, .card-title {
+        color: #111;
+      }
+      .measurements-table td.val {
+        color: #0284c7;
+      }
+      .badge {
+        border: 1px solid #ccc;
+        color: #333;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header-card">
+      <h1 class="brand-title">✨ Stella Styling Dossier</h1>
+      <p class="brand-subtitle">Personalized AI Dress Size, Silhouette & Wardrobe Consultation</p>
+      <div class="badges">
+        <span class="badge badge-primary">Session: 9d6a8e11</span>
+        <span class="badge">Expertise: novice</span>
+        <span class="badge">August 27, 2026 • 09:31 AM</span>
+      </div>
+    </header>
+
+    <section class="confidence-section">
+      <div class="confidence-header">
+        <span>Styling Confidence Score</span>
+        <span style="color: #10b981;">100.0%</span>
+      </div>
+      <div class="confidence-bar-bg">
+        <div class="confidence-bar-fill"></div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <!-- Measurements Card -->
+      <div class="card">
+        <h2 class="card-title">📏 Body Dimensions & Size History</h2>
+        <table class="measurements-table">
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Inches</th>
+              <th>Centimeters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Bust</td>
+              <td class="val">34.0 in</td>
+              <td class="val">86.4 cm</td>
+            </tr>
+            <tr>
+              <td>Waist</td>
+              <td class="val">26.0 in</td>
+              <td class="val">66.0 cm</td>
+            </tr>
+            <tr>
+              <td>Hips</td>
+              <td class="val">36.0 in</td>
+              <td class="val">91.4 cm</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top: 1.25rem;">
+          <div class="detail-item">
+            <div class="detail-label">Usual Dress Size</div>
+            <div class="detail-value">N/A (Brand Ref: N/A)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fit & Style Preferences Card -->
+      <div class="card">
+        <h2 class="card-title">👗 Style Profile & Occasion</h2>
+        <div class="detail-item">
+          <div class="detail-label">Fit Preference & Silhouette</div>
+          <div class="detail-value">flowy</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Comfort & Focus Areas</div>
+          <div class="detail-value">None specified</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Event Occasion & Aesthetic</div>
+          <div class="detail-value">wedding • classic</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Past Flawless Fit Reference</div>
+          <div class="detail-value">N/A by Zara (N/A)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final Tailored Recommendation Card -->
+    <section class="recommendation-card">
+      <h2 class="card-title" style="color: #f48fb1; border-color: rgba(244, 143, 177, 0.3);">
+        ✨ Tailored Sizing & Silhouette Recommendations
+      </h2>
+      <div style="font-size: 1.05rem; line-height: 1.7; color: #f3f4f6;">
+        Here is your recommendation.
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Generated by <strong>Stella AI Dress Stylist</strong> • Session 9d6a8e11</p>
+      <p style="margin-top: 0.25rem; font-size: 0.8rem;">Designed for precision tailoring and confident dressing.</p>
+    </footer>
+  </div>
+</body>
+</html>

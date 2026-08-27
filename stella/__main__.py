@@ -30,6 +30,11 @@ def main() -> None:
         metavar="SESSION_ID",
         help="Print the state dump for a saved session without running the consultation",
     )
+    parser.add_argument(
+        "--export",
+        metavar="SESSION_ID",
+        help="Export a saved consultation session to a standalone HTML Styling Dossier",
+    )
     args = parser.parse_args()
 
     # Lazy imports so CLI help loads fast even without dependencies
@@ -41,6 +46,16 @@ def main() -> None:
             display_error(f"No session found with ID: {args.dump}")
             sys.exit(1)
         display_state_dump(state.state_dump())
+        return
+
+    if args.export:
+        state = load_session(args.export)
+        if state is None:
+            display_error(f"No session found with ID: {args.export}")
+            sys.exit(1)
+        from stella.export import export_html_dossier
+        export_path = export_html_dossier(state)
+        console.print(f"\n[bold green]✓ Standalone HTML Styling Dossier generated:[/bold green] [cyan]{export_path}[/cyan]\n")
         return
 
     if args.resume:
