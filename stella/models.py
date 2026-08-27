@@ -88,27 +88,33 @@ class MeasurementData(BaseModel):
         self.unit = "inches"
 
     def has_out_of_bounds_measurements(self) -> tuple[bool, str]:
-        """Validate if normalized measurements fall within realistic human sizing ranges.
+        """Validate if measurements are physically possible while fully supporting body diversity and outliers.
 
-        Ranges:
-            Bust:  20.0 in (50.8 cm) - 75.0 in (190.5 cm)
-            Waist: 18.0 in (45.7 cm) - 70.0 in (177.8 cm)
-            Hips:  22.0 in (55.8 cm) - 85.0 in (215.9 cm)
+        Rejects non-positive numbers (<= 0) and extreme physically impossible values (e.g. 999 meters),
+        while comfortably accepting all human body diversity (petite to extended plus sizes 8X+).
+
+        Inclusive Outlier Thresholds:
+            Bust:  14.0 in (35 cm) to 120.0 in (305 cm)
+            Waist: 12.0 in (30 cm) to 120.0 in (305 cm)
+            Hips:  14.0 in (35 cm) to 130.0 in (330 cm)
 
         Returns:
             tuple[bool, str]: (is_invalid, explanation_message)
         """
-        if self.bust_in is not None:
-            if self.bust_in < 20.0 or self.bust_in > 75.0:
-                return True, f"Bust measurement ({self.bust_in}\" / {self.bust_cm} cm) is outside realistic tailoring ranges (20–75 in / 50–190 cm)."
+        # 1. Reject non-positive values
+        for label, val in [("Bust", self.bust_in), ("Waist", self.waist_in), ("Hips", self.hips_in)]:
+            if val is not None and val <= 0:
+                return True, f"{label} measurement cannot be zero or negative ({val})."
 
-        if self.waist_in is not None:
-            if self.waist_in < 18.0 or self.waist_in > 70.0:
-                return True, f"Waist measurement ({self.waist_in}\" / {self.waist_cm} cm) is outside realistic tailoring ranges (18–70 in / 45–180 cm)."
+        # 2. Reject physically impossible entries outside broad human ranges
+        if self.bust_in is not None and (self.bust_in < 14.0 or self.bust_in > 120.0):
+            return True, f"Bust measurement ({self.bust_in}\" / {self.bust_cm} cm) is outside plausible human measurements."
 
-        if self.hips_in is not None:
-            if self.hips_in < 22.0 or self.hips_in > 85.0:
-                return True, f"Hip measurement ({self.hips_in}\" / {self.hips_cm} cm) is outside realistic tailoring ranges (22–85 in / 55–215 cm)."
+        if self.waist_in is not None and (self.waist_in < 12.0 or self.waist_in > 120.0):
+            return True, f"Waist measurement ({self.waist_in}\" / {self.waist_cm} cm) is outside plausible human measurements."
+
+        if self.hips_in is not None and (self.hips_in < 14.0 or self.hips_in > 130.0):
+            return True, f"Hip measurement ({self.hips_in}\" / {self.hips_cm} cm) is outside plausible human measurements."
 
         return False, ""
 

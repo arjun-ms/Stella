@@ -226,5 +226,28 @@ def test_failure_mode_8_out_of_bounds_measurement_termination_on_repeat():
         assert final_state.attempts_per_step[1] == 2
 
 
+def test_human_outlier_measurements_accepted_without_rejection():
+    """Verify that extreme but genuine human outlier measurements (e.g. 15-inch waist,
+    85-inch bust/hips) are embraced and accepted without false-positive rejection."""
+    # Petite outlier
+    petite = MeasurementData(bust_value=24.0, waist_value=15.0, hips_value=26.0, unit="inches")
+    petite.normalize_measurements()
+    is_invalid, msg = petite.has_out_of_bounds_measurements()
+    assert not is_invalid, f"Petite outlier should be accepted: {msg}"
+
+    # Extended plus size outlier
+    plus = MeasurementData(bust_value=85.0, waist_value=78.0, hips_value=92.0, unit="inches")
+    plus.normalize_measurements()
+    is_invalid, msg = plus.has_out_of_bounds_measurements()
+    assert not is_invalid, f"Plus size outlier should be accepted: {msg}"
+
+    # Negative / zero / absurd troll values should still be rejected
+    nonsense = MeasurementData(bust_value=-5.0, waist_value=0.0, hips_value=999.0, unit="inches")
+    nonsense.normalize_measurements()
+    is_invalid, msg = nonsense.has_out_of_bounds_measurements()
+    assert is_invalid
+
+
+
 
 
