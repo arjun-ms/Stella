@@ -24,6 +24,13 @@ copy .env.example .env
 python -m stella
 ```
 
+### List All Saved Sessions
+
+```bash
+python -m stella --list
+```
+*Displays a table of all saved consultation sessions with their Session IDs, expertise level, progress step, confidence score, and timestamps.*
+
 ### Resume a Session
 
 ```bash

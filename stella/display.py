@@ -422,6 +422,41 @@ def display_goodbye() -> None:
     console.print()
 
 
+def display_session_list(sessions: list[dict]) -> None:
+    """Display a table of saved sessions with their IDs, step progress, and confidence."""
+    if not sessions:
+        console.print("[dim]No saved sessions found in sessions/ directory.[/dim]")
+        return
+
+    table = Table(
+        title="[bold magenta]✨ Saved Stella Styling Sessions ✨[/bold magenta]",
+        border_style="magenta",
+        box=box.ROUNDED,
+        header_style="bold cyan",
+        padding=(0, 1),
+    )
+    table.add_column("Session ID", style="bold yellow")
+    table.add_column("Expertise", style="white")
+    table.add_column("Progress", style="cyan")
+    table.add_column("Confidence", style="green")
+    table.add_column("Updated", style="dim")
+
+    for s in sessions:
+        step_label = "Complete" if s.get("current_step", 1) >= 5 else f"Step {s.get('current_step', 1)}/4"
+        conf_label = f"{s.get('confidence', 0.0):.0f}%"
+        table.add_row(
+            s.get("session_id", "unknown"),
+            s.get("user_expertise", "novice").capitalize(),
+            step_label,
+            conf_label,
+            s.get("updated_at", "")[:19].replace("T", " "),
+        )
+
+    console.print()
+    console.print(table)
+    console.print("[dim]Tip: Resume any session with: [cyan]python -m stella --resume <SESSION_ID>[/cyan][/dim]\n")
+
+
 __all__ = [
     "console",
     "display_api_key_prompt",
@@ -433,6 +468,7 @@ __all__ = [
     "display_measurement_out_of_bounds_warning",
     "display_quota_exhausted",
     "display_recommendation",
+    "display_session_list",
     "display_state_dump",
     "display_stella_message",
     "display_welcome",

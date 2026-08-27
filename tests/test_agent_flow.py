@@ -1,5 +1,7 @@
 """Tests for agent instruction generation and state transition logic."""
 
+from unittest.mock import patch
+
 from stella.agent import _build_step_instruction
 from stella.models import MeasurementData, SessionState
 
@@ -44,3 +46,23 @@ def test_build_step_instruction_followup_retry():
 
     assert "[STEP 1/4 - FOLLOW-UP]" in instr_retry
     assert "Politely probe for more specific details" in instr_retry
+
+
+def test_list_sessions_returns_valid_summaries(tmp_path):
+    """Verify that list_sessions correctly reads saved session files and returns summary dicts."""
+    from stella.agent import list_sessions, save_session
+
+    state = SessionState(session_id="list_test_99", user_expertise="professional")
+    state.current_step = 3
+    state.confidence = 55.0
+
+    with patch("stella.agent.get_settings") as mock_settings:
+        mock_settings.return_value.sessions_dir = tmp_path
+        save_session(state)
+
+        summaries = list_sessions()
+        assert len(summaries) == 1
+        assert summaries[0]["session_id"] == "list_test_99"
+        assert summaries[0]["user_expertise"] == "professional"
+        assert summaries[0]["current_step"] == 3
+        assert summaries[0]["confidence"] == 55.0

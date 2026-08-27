@@ -35,10 +35,21 @@ def main() -> None:
         metavar="SESSION_ID",
         help="Export a saved consultation session to a standalone HTML Styling Dossier",
     )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List all saved styling sessions with their IDs, progress, and confidence",
+    )
     args = parser.parse_args()
 
     # Lazy imports so CLI help loads fast even without dependencies
-    from stella.agent import load_session, run_consultation
+    from stella.agent import list_sessions, load_session, run_consultation
+    from stella.display import display_session_list
+
+    if args.list:
+        sessions = list_sessions()
+        display_session_list(sessions)
+        return
 
     if args.dump:
         state = load_session(args.dump)

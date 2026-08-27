@@ -1,0 +1,11 @@
+Stella: Stella question
+User: 34, 26, 36
+Stella: Stella question
+User: inches please
+Stella: Stella question
+User: default answer
+Stella: Stella question
+User: default answer
+Stella: Stella question
+User: default answer
+Stella: Here is your recommendation.

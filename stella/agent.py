@@ -335,3 +335,28 @@ def run_consultation(
     display_goodbye()
 
     return state
+
+
+def list_sessions() -> list[dict]:
+    """List all saved session summaries from the sessions directory, sorted by newest first."""
+    settings = get_settings()
+    sessions_dir = settings.sessions_dir
+    if not sessions_dir.exists():
+        return []
+
+    summaries: list[dict] = []
+    for file_path in sessions_dir.glob("session_*.json"):
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8"))
+            summaries.append({
+                "session_id": data.get("session_id", file_path.stem.replace("session_", "")),
+                "user_expertise": data.get("user_expertise", "novice"),
+                "current_step": data.get("current_step", 1),
+                "confidence": data.get("confidence", 0.0),
+                "updated_at": data.get("updated_at", ""),
+            })
+        except Exception:
+            continue
+
+    summaries.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+    return summaries
