@@ -12,6 +12,7 @@ import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 from google import genai
 from google.genai import types
@@ -31,6 +32,11 @@ class LLMClient:
         self._logs_dir = settings.logs_dir
         self._session_id: str | None = None
         self._log_path: Path | None = None
+        self._on_status: Callable[[str, str], None] | None = None
+
+    def set_status_callback(self, callback: Callable[[str, str], None] | None) -> None:
+        """Set a callback to receive status events ('rate_limit', 'model_switch', 'error')."""
+        self._on_status = callback
 
     @property
     def _current_model(self) -> str:
@@ -106,9 +112,10 @@ class LLMClient:
                     old_model = self._current_model
                     self._model_idx += 1
                     new_model = self._current_model
-                    console.print(
-                        f"\n[cyan]🔄 Model '{old_model}' quota exhausted. Switching to fallback model '{new_model}'...[/cyan]"
-                    )
+                    switch_msg = f"Model '{old_model}' quota exhausted. Switching to fallback model '{new_model}'..."
+                    console.print(f"\n[cyan]🔄 {switch_msg}[/cyan]")
+                    if self._on_status:
+                        self._on_status("model_switch", switch_msg)
                     attempt = 0
                     continue
 
@@ -123,11 +130,14 @@ class LLMClient:
                         sleep_s = 4.0 * (1.5 ** (attempt - 1))
 
                     reason = "API rate limit reached" if is_rate_limit else "Server traffic spike"
-                    console.print(
-                        f"[yellow]⏳ {reason}. Pausing {int(sleep_s)}s before automatic retry... (Attempt {attempt}/{max_retries})[/yellow]"
-                    )
+                    retry_msg = f"{reason}. Pausing {int(sleep_s)}s before automatic retry... (Attempt {attempt}/{max_retries})"
+                    console.print(f"[yellow]⏳ {retry_msg}[/yellow]")
+                    if self._on_status:
+                        self._on_status("rate_limit", retry_msg)
                     time.sleep(sleep_s)
                 else:
+                    if self._on_status:
+                        self._on_status("error", str(e))
                     raise
 
     def _build_contents(

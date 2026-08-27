@@ -1,0 +1,4 @@
+User: 34 bust
+Stella: ⚠️ **Google Gemini Quota Limit Reached.** All fallback models have exhausted their rate limits for now.
+
+Your consultation has been saved on disk (Session ID: `st_test_quota`). You can resume anytime once your quota resets!

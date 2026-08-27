@@ -52,15 +52,26 @@ def init_session_state(session_dict: dict | None = None) -> SessionState:
     return session_dict["stella_state"]
 
 
-def process_chat_turn(state: SessionState, user_input: str, llm: LLMClient) -> str:
+def process_chat_turn(
+    state: SessionState,
+    user_input: str,
+    llm: LLMClient,
+    status_callback: Callable[[str, str], None] | None = None,
+) -> str:
     """Process a single turn of user input, extract structured data, and return assistant response."""
+    if status_callback:
+        llm.set_status_callback(status_callback)
+
     state.add_message("user", user_input)
     current_step = state.current_step
 
     # Extract structured data
     try:
         extracted = llm.extract(current_step, user_input)
-    except Exception:
+    except Exception as e:
+        err_msg = str(e)
+        if status_callback:
+            status_callback("error", f"Extraction error: {err_msg}")
         extracted = {"detail_level": "low"}
 
     # Update state based on step
@@ -110,7 +121,15 @@ def process_chat_turn(state: SessionState, user_input: str, llm: LLMClient) -> s
         try:
             assistant_reply = llm.recommend(5, profile_json)
         except Exception as e:
-            assistant_reply = f"Failed to generate recommendation: {e}"
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                assistant_reply = (
+                    "⚠️ **Google Gemini Quota Limit Reached.** All fallback models have exhausted their rate limits for now.\n\n"
+                    f"Your consultation has been saved on disk (Session ID: `{state.session_id}`). "
+                    "You can resume anytime once your quota resets!"
+                )
+            else:
+                assistant_reply = f"⚠️ Failed to generate recommendation: {e}"
         state.add_message("assistant", assistant_reply)
     else:
         # Advance to next question
@@ -120,7 +139,15 @@ def process_chat_turn(state: SessionState, user_input: str, llm: LLMClient) -> s
         try:
             assistant_reply = llm.chat(state.current_step, instruction, history)
         except Exception as e:
-            assistant_reply = f"Thank you! Could you share your thoughts for the next step? (Error: {e})"
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                assistant_reply = (
+                    "⚠️ **Google Gemini Quota Limit Reached.** All fallback models have exhausted their rate limits for now.\n\n"
+                    f"Your consultation has been saved on disk (Session ID: `{state.session_id}`). "
+                    "You can resume anytime once your quota resets!"
+                )
+            else:
+                assistant_reply = f"Thank you! Could you share your thoughts for the next step? (Notice: {e})"
         state.add_message("assistant", assistant_reply)
 
     # Persist session
@@ -275,8 +302,21 @@ def main():
         llm.set_session_id(state.session_id)
 
         with st.chat_message("assistant", avatar="👗"):
+            status_container = st.empty()
+
+            def on_status_event(level: str, msg: str):
+                if level == "rate_limit":
+                    st.toast(f"⏳ {msg}", icon="⏳")
+                    status_container.warning(f"⏳ {msg}")
+                elif level == "model_switch":
+                    st.toast(f"🔄 {msg}", icon="🔄")
+                    status_container.info(f"🔄 {msg}")
+                elif level == "error":
+                    status_container.error(f"⚠️ {msg}")
+
             with st.spinner("✨ Stella is analyzing your profile..."):
-                reply = process_chat_turn(state, prompt, llm)
+                reply = process_chat_turn(state, prompt, llm, status_callback=on_status_event)
+                status_container.empty()
                 st.markdown(reply)
 
         st.rerun()

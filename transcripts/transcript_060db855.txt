@@ -1,0 +1,17 @@
+Stella: ✨ **Welcome to Stella — Your Personal Dress Size & Fit Stylist!** ✨
+
+I'll guide you through a quick 4-question consultation to recommend your exact dress size, ideal silhouettes, and tailored brand tips.
+
+**Question 1:** Could you share your bust, waist, and hips measurements? (You can share in inches, centimeters, or your usual off-the-rack brand size!)
+User: Bust 34 in, waist 26 in, hips 36 in, usually US 4 in Zara
+Stella: Thank you so much! Those measurements (34" bust, 26" waist, and 36" hips) are incredibly helpful, and knowing you are usually a US 4 in Zara gives us a wonderful baseline to work with. You have a beautifully balanced silhouette!
+
+Now, let's talk about how you like your dresses to feel on your body. Do you prefer styles that are more fitted and hug your curves, or do you lean toward something flowy, relaxed, or maybe gently cinched at the waist (like an A-line or wrap dress)? 
+
+Also, please let me know if there are any areas you love to show off, or any spots where you prefer a bit of extra breathing room!
+User: I love A-line wrap dresses, fitted bodice with flowy skirt
+Stella: An A-line wrap dress with a fitted top and a flowy skirt is such a classic, beautiful choice! It is incredibly flattering because it gently hugs your waist and then flares out softly, giving you plenty of comfort and room to move. 
+
+To help me find the perfect match, where are you planning to wear this dress? For example, is it for a sunny outdoor wedding, a casual weekend brunch, work, or a fancy dinner? 
+
+And how would you describe the overall look or "vibe" you are hoping for—like romantic, simple and clean, bohemian, or maybe something bold and fun?
