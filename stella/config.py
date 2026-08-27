@@ -26,7 +26,11 @@ class Settings(BaseModel):
     )
     model_name: str = Field(
         default="gemini-3.5-flash",
-        description="Gemini model identifier to use for LLM interactions",
+        description="Active Gemini model identifier to use for LLM interactions",
+    )
+    models: list[str] = Field(
+        default_factory=lambda: ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+        description="Ordered list of fallback Gemini models to cycle through on quota exhaustion",
     )
     sessions_dir: Path = Field(
         default=Path("sessions"),
@@ -58,13 +62,23 @@ def get_settings() -> Settings:
             "Please create a .env file (see .env.example) or export GOOGLE_API_KEY."
         )
 
-    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+    models_env = os.getenv("GEMINI_MODELS")
+    if models_env and models_env.strip():
+        models = [m.strip() for m in models_env.split(",") if m.strip()]
+    else:
+        single_model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
+        models = [single_model, "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+        # Deduplicate while preserving order
+        models = list(dict.fromkeys(models))
+
+    model_name = models[0]
     sessions_dir = Path(os.getenv("STELLA_SESSIONS_DIR", "sessions"))
     logs_dir = Path(os.getenv("STELLA_LOGS_DIR", "logs"))
 
     settings = Settings(
         api_key=api_key.strip(),
         model_name=model_name,
+        models=models,
         sessions_dir=sessions_dir,
         logs_dir=logs_dir,
     )

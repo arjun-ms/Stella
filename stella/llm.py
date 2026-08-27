@@ -26,10 +26,18 @@ class LLMClient:
     def __init__(self) -> None:
         settings = get_settings()
         self._client = genai.Client(api_key=settings.api_key)
-        self._model = settings.model_name
+        self._models: list[str] = list(settings.models)
+        self._model_idx: int = 0
         self._logs_dir = settings.logs_dir
         self._session_id: str | None = None
         self._log_path: Path | None = None
+
+    @property
+    def _current_model(self) -> str:
+        """Get the currently active model from the models cascade list."""
+        if 0 <= self._model_idx < len(self._models):
+            return self._models[self._model_idx]
+        return self._models[0] if self._models else "gemini-3.5-flash"
 
     def set_session_id(self, session_id: str) -> None:
         """Set the session ID and configure the trace log file path."""
@@ -51,7 +59,7 @@ class LLMClient:
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "call_type": call_type,
-            "model": self._model,
+            "model": self._current_model,
             "step": step,
             "latency_ms": round(latency_ms, 1),
             "prompt_tokens": usage.prompt_token_count if usage else None,
@@ -68,12 +76,13 @@ class LLMClient:
         config: types.GenerateContentConfig,
         max_retries: int = 6,
     ) -> types.GenerateContentResponse:
-        """Call Gemini API with automatic exponential backoff on 429 quota limits or 503 transient errors."""
+        """Call Gemini API with automatic exponential backoff on 429 quota limits or 503 transient errors,
+        failing over to the next model in the cascade list if daily quota is exhausted."""
         attempt = 0
         while True:
             try:
                 return self._client.models.generate_content(
-                    model=self._model,
+                    model=self._current_model,
                     contents=contents,
                     config=config,
                 )
@@ -82,6 +91,26 @@ class LLMClient:
                 attempt += 1
                 is_rate_limit = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "Quota exceeded" in err_msg
                 is_transient = "503" in err_msg or "UNAVAILABLE" in err_msg or "500" in err_msg or "502" in err_msg or "high demand" in err_msg
+                is_daily_or_deprecated = (
+                    "daily" in err_msg.lower()
+                    or "limit: 0" in err_msg.lower()
+                    or "404" in err_msg
+                    or "not found" in err_msg.lower()
+                    or attempt > max_retries
+                )
+
+                from stella.display import console
+
+                # If daily limit reached or retry cap reached, check if we have a fallback model in cascade
+                if is_daily_or_deprecated and self._model_idx + 1 < len(self._models):
+                    old_model = self._current_model
+                    self._model_idx += 1
+                    new_model = self._current_model
+                    console.print(
+                        f"\n[cyan]🔄 Model '{old_model}' quota exhausted. Switching to fallback model '{new_model}'...[/cyan]"
+                    )
+                    attempt = 0
+                    continue
 
                 if (is_rate_limit or is_transient) and attempt <= max_retries:
                     # Extract suggested delay if present (e.g. 'retry in 7.5s')
@@ -93,7 +122,6 @@ class LLMClient:
                     else:
                         sleep_s = 4.0 * (1.5 ** (attempt - 1))
 
-                    from stella.display import console
                     reason = "API rate limit reached" if is_rate_limit else "Server traffic spike"
                     console.print(
                         f"[yellow]⏳ {reason}. Pausing {int(sleep_s)}s before automatic retry... (Attempt {attempt}/{max_retries})[/yellow]"

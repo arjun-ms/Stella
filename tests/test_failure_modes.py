@@ -109,3 +109,37 @@ def test_failure_mode_4_rate_limit_retry_notifies_user():
         printed_text = str(mock_print.call_args)
         assert "Pausing" in printed_text or "rate limit" in printed_text.lower()
 
+
+def test_failure_mode_5_model_fallback_cascade_on_quota_depletion():
+    """Behavior 5: When the primary model exhausts daily quota or fails completely,
+    LLMClient automatically fails over to the next model in the models cascade list."""
+    with patch("stella.llm.genai.Client") as mock_genai_cls, \
+         patch("stella.display.console.print") as mock_print, \
+         patch("time.sleep"):
+
+        mock_genai = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.text = "Response from fallback model"
+        mock_resp.usage_metadata = MagicMock(prompt_token_count=10, candidates_token_count=5, total_token_count=15)
+
+        # Primary model repeatedly returns 429 quota exhausted; secondary model succeeds
+        def mock_generate(model, contents, config):
+            if model == "gemini-3.5-flash":
+                raise RuntimeError("429 RESOURCE_EXHAUSTED: Daily quota reached for gemini-3.5-flash")
+            return mock_resp
+
+        mock_genai.models.generate_content.side_effect = mock_generate
+        mock_genai_cls.return_value = mock_genai
+
+        client = LLMClient()
+        client._models = ["gemini-3.5-flash", "gemini-2.5-flash"]
+        res = client._generate_with_retry([], MagicMock(), max_retries=2)
+
+        assert res.text == "Response from fallback model"
+        assert client._current_model == "gemini-2.5-flash"
+        # Verify user was notified of fallback
+        assert mock_print.called
+        printed_all = " ".join(str(c) for c in mock_print.call_args_list)
+        assert "Switching" in printed_all or "fallback" in printed_all.lower()
+
+
