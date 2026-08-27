@@ -34,6 +34,34 @@ def test_llm_chat_invocation(mock_genai, tmp_path):
         mock_genai.models.generate_content.assert_called_once()
 
 
+def test_llm_chat_with_conversation_message_objects(mock_genai, tmp_path):
+    """Verify that chat() accepts both raw dicts and ConversationMessage objects without TypeError."""
+    from stella.models import ConversationMessage
+
+    with patch("stella.llm.get_settings") as mock_settings:
+        mock_settings.return_value.api_key = "fake-key"
+        mock_settings.return_value.model_name = "gemini-2.5-flash"
+        mock_settings.return_value.logs_dir = tmp_path
+
+        mock_resp = MagicMock()
+        mock_resp.text = "Tell me about your fit preference."
+        mock_resp.usage_metadata = MagicMock(prompt_token_count=60, candidates_token_count=20, total_token_count=80)
+        mock_genai.models.generate_content.return_value = mock_resp
+
+        client = LLMClient()
+        client.set_session_id("mock_session_04")
+
+        # Pass ConversationMessage objects directly
+        history = [
+            ConversationMessage(role="assistant", content="Welcome to Stella!"),
+            ConversationMessage(role="user", content="Bust 34 in, waist 26 in, hips 36 in"),
+        ]
+
+        response = client.chat(2, "Ask fit preference", history)
+        assert response == "Tell me about your fit preference."
+        mock_genai.models.generate_content.assert_called_once()
+
+
 def test_llm_extract_json(mock_genai, tmp_path):
     with patch("stella.llm.get_settings") as mock_settings:
         mock_settings.return_value.api_key = "fake-key"

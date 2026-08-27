@@ -137,12 +137,15 @@ class LLMClient:
         contents: list[types.Content] = []
 
         for msg in history:
+            msg_role = msg.role if hasattr(msg, "role") else msg.get("role", "user")
+            msg_content = msg.content if hasattr(msg, "content") else msg.get("content", "")
+
             # Gemini uses "model" instead of "assistant"
-            role = "model" if msg["role"] == "assistant" else "user"
+            role = "model" if msg_role == "assistant" else "user"
             contents.append(
                 types.Content(
                     role=role,
-                    parts=[types.Part(text=msg["content"])],
+                    parts=[types.Part(text=msg_content)],
                 )
             )
 

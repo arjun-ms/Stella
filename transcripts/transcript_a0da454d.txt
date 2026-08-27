@@ -1,0 +1,7 @@
+Stella: ✨ **Welcome to Stella — Your Personal Dress Size & Fit Stylist!** ✨
+
+I'll guide you through a quick 4-question consultation to recommend your exact dress size, ideal silhouettes, and tailored brand tips.
+
+**Question 1:** Could you share your bust, waist, and hips measurements? (You can share in inches, centimeters, or your usual off-the-rack brand size!)
+User: Bust 34 in, waist 26 in, hips 36 in, usually US 4 in Zara
+Stella: Thank you! Could you share your thoughts for the next step? (Error: 'ConversationMessage' object is not subscriptable)

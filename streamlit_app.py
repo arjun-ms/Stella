@@ -10,7 +10,12 @@ import json
 from pathlib import Path
 import streamlit as st
 
-from stella.agent import _build_step_instruction, save_session, save_transcript
+from stella.agent import (
+    _build_step_instruction,
+    _get_chat_history,
+    save_session,
+    save_transcript,
+)
 from stella.config import ensure_api_key_configured, get_settings
 from stella.export import export_html_dossier
 from stella.llm import LLMClient
@@ -111,8 +116,9 @@ def process_chat_turn(state: SessionState, user_input: str, llm: LLMClient) -> s
         # Advance to next question
         state.current_step += 1
         instruction = _build_step_instruction(state.current_step, state)
+        history = _get_chat_history(state)
         try:
-            assistant_reply = llm.chat(state.current_step, instruction, state.conversation_history)
+            assistant_reply = llm.chat(state.current_step, instruction, history)
         except Exception as e:
             assistant_reply = f"Thank you! Could you share your thoughts for the next step? (Error: {e})"
         state.add_message("assistant", assistant_reply)
