@@ -1,0 +1,18 @@
+Stella: Got it! How do you like dresses to fit?
+User: <script>alert('XSS')</script><iframe src='javascript:void(0)'></iframe>```sql
+DROP TABLE users;--
+```Bust 36in, waist 28in, hips 38in | <table><tr><td>Injected</td></tr></table>
+Stella: Got it! How do you like dresses to fit?
+User: <script>alert('XSS')</script><iframe src='javascript:void(0)'></iframe>```sql
+DROP TABLE users;--
+```Bust 36in, waist 28in, hips 38in | <table><tr><td>Injected</td></tr></table>
+Stella: Got it! How do you like dresses to fit?
+User: <script>alert('XSS')</script><iframe src='javascript:void(0)'></iframe>```sql
+DROP TABLE users;--
+```Bust 36in, waist 28in, hips 38in | <table><tr><td>Injected</td></tr></table>
+Stella: Got it! How do you like dresses to fit?
+User: <script>alert('XSS')</script><iframe src='javascript:void(0)'></iframe>```sql
+DROP TABLE users;--
+```Bust 36in, waist 28in, hips 38in | <table><tr><td>Injected</td></tr></table>
+Stella: ## Safe Recommendation
+Recommended Size: US 6
