@@ -96,18 +96,37 @@ def _build_step_instruction(step: int, state: SessionState) -> str:
     known_summary = "\n".join(known_parts) if known_parts else "None yet"
 
     if attempt == 0:
+        step1_hint = ""
+        if step == 1:
+            step1_hint = (
+                "Provide clear, friendly sample response formats to guide their answer "
+                "(e.g. 'Bust: 34 in, Waist: 26 in, Hips: 36 in' or 'Bust: 88 cm, Waist: 68 cm, Hips: 92 cm'). "
+                "Explicitly mention they can use inches (in), centimeters (cm), or meters (m).\n\n"
+            )
         return (
             f"[STEP {step}/4]\n"
             f"User Expertise Level: {expertise}\n"
             f"Question Topic: {context}\n\n"
+            f"{step1_hint}"
             f"Information collected so far:\n{known_summary}\n\n"
             f"Ask your question naturally, acknowledging any previous answers and calibrating your vocabulary to the user's expertise level."
         )
     else:
+        unit_missing_hint = ""
+        if step == 1 and state.measurements and state.measurements.needs_unit_confirmation():
+            m = state.measurements
+            b = m.bust_value if m.bust_value is not None else m.bust
+            w = m.waist_value if m.waist_value is not None else m.waist
+            h = m.hips_value if m.hips_value is not None else m.hips
+            unit_missing_hint = (
+                f"The user provided numbers for their measurements ({b}, {w}, {h}) "
+                f"but did not specify the unit (inches, cm, or meters). Acknowledge their numbers warmly "
+                f"and ask them to confirm whether these are in inches (in) or centimeters (cm).\n\n"
+            )
         return (
             f"[STEP {step}/4 - FOLLOW-UP]\n"
             f"User Expertise Level: {expertise}\n"
-            f"The user's previous answer was vague or incomplete.\n"
+            f"{unit_missing_hint}"
             f"Topic: {context}\n\n"
             f"Politely probe for more specific details. Be warm and encouraging. "
             f"This is your last chance to ask about this topic before moving on."
@@ -243,6 +262,15 @@ def run_consultation(
                     display_invalid_measurements_termination(state.session_id)
                     save_session(state)
                     return state
+
+            # Check if user provided numbers without any unit (missing unit clarification)
+            if parsed.needs_unit_confirmation() and state.attempts_per_step.get(step, 0) < MAX_ATTEMPTS_PER_STEP:
+                state.attempts_per_step[step] = state.attempts_per_step.get(step, 0) + 1
+                setattr(state, attr_name, parsed)
+                confidence = compute_confidence(state)
+                display_confidence_bar(confidence, step)
+                save_session(state)
+                continue
 
         # Check if we need to re-ask (vague answer, first attempt)
         state.attempts_per_step[step] = state.attempts_per_step.get(step, 0) + 1

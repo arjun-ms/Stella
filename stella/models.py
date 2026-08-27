@@ -36,7 +36,7 @@ class MeasurementData(BaseModel):
     bust: float | None = None
     waist: float | None = None
     hips: float | None = None
-    unit: str = "inches"
+    unit: str | None = None
 
     usual_size: str | None = None
     size_brand_ref: str | None = None
@@ -86,6 +86,19 @@ class MeasurementData(BaseModel):
         self.waist = w_in
         self.hips = h_in
         self.unit = "inches"
+
+    def needs_unit_confirmation(self) -> bool:
+        """Check if numerical measurements were provided but units were completely omitted by user."""
+        has_any_num = any(
+            v is not None for v in [self.bust_value, self.waist_value, self.hips_value, self.bust, self.waist, self.hips]
+        )
+        has_any_unit = any(
+            u is not None and str(u).strip() for u in [self.bust_unit, self.waist_unit, self.hips_unit]
+        )
+        # If numbers are provided without unit and without brand / standard size references
+        if has_any_num and not has_any_unit and not self.usual_size and not self.size_brand_ref:
+            return True
+        return False
 
     def has_out_of_bounds_measurements(self) -> tuple[bool, str]:
         """Validate if measurements are physically possible while fully supporting body diversity and outliers.

@@ -248,6 +248,43 @@ def test_human_outlier_measurements_accepted_without_rejection():
     assert is_invalid
 
 
+def test_missing_unit_triggers_followup_confirmation():
+    """Behavior 9: When user gives raw numbers without any unit (e.g. '34, 26, 36'),
+    Stella does not blindly guess; she asks a polite follow-up to confirm the unit,
+    then updates measurements accurately once confirmed on turn 2."""
+    inputs = iter([
+        "34, 26, 36",       # Turn 1: No unit specified -> triggers unit confirmation follow-up
+        "inches please",    # Turn 2: User clarifies unit -> normalized to 34in / 86.4cm
+    ])
+
+    state = SessionState(user_expertise="novice")
+
+    with patch("stella.agent.LLMClient") as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.chat.return_value = "Stella question"
+        mock_client.extract.side_effect = [
+            # First turn: numbers extracted, but units are null
+            {"bust_value": 34.0, "waist_value": 26.0, "hips_value": 36.0, "bust_unit": None, "waist_unit": None, "hips_unit": None, "unit": None, "detail_level": "medium"},
+            # Second turn: unit confirmed as inches
+            {"bust_value": 34.0, "waist_value": 26.0, "hips_value": 36.0, "bust_unit": "inches", "waist_unit": "inches", "hips_unit": "inches", "unit": "inches", "detail_level": "high"},
+            # Step 2
+            {"preference": "flowy", "detail_level": "high"},
+            # Step 3
+            {"occasion": "wedding", "style": "classic", "detail_level": "high"},
+            # Step 4
+            {"brand": "Zara", "detail_level": "high"},
+        ]
+        mock_client.recommend.return_value = "Here is your recommendation."
+        mock_client_cls.return_value = mock_client
+
+        final_state = run_consultation(state=state, input_fn=lambda: next(inputs, "default answer"))
+
+        assert final_state.attempts_per_step[1] == 2
+        assert final_state.measurements.bust_in == 34.0
+        assert final_state.measurements.bust_cm == 86.4
+
+
+
 
 
 
