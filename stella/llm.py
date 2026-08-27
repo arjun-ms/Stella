@@ -92,6 +92,12 @@ class LLMClient:
                         sleep_s = 7.0 * (1.4 ** (attempt - 1))
                     else:
                         sleep_s = 4.0 * (1.5 ** (attempt - 1))
+
+                    from stella.display import console
+                    reason = "API rate limit reached" if is_rate_limit else "Server traffic spike"
+                    console.print(
+                        f"[yellow]⏳ {reason}. Pausing {int(sleep_s)}s before automatic retry... (Attempt {attempt}/{max_retries})[/yellow]"
+                    )
                     time.sleep(sleep_s)
                 else:
                     raise

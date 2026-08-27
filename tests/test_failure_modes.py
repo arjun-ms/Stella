@@ -78,3 +78,34 @@ def test_failure_mode_3_consecutive_vague_answers_no_infinite_loop():
         assert final_state.confidence == 4.0
         # Verify it advanced past step 1 (to step 2)
         assert final_state.current_step >= 2
+
+
+def test_failure_mode_4_rate_limit_retry_notifies_user():
+    """Behavior 4: When a 429 rate limit or 503 error occurs,
+    _generate_with_retry displays a visible pause message with countdown info."""
+    with patch("stella.llm.genai.Client") as mock_genai_cls, \
+         patch("stella.display.console.print") as mock_print, \
+         patch("time.sleep") as mock_sleep:
+
+        mock_genai = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.text = "Success after retry"
+        mock_resp.usage_metadata = MagicMock(prompt_token_count=10, candidates_token_count=5, total_token_count=15)
+
+        # First call fails with 429 rate limit, second succeeds
+        mock_genai.models.generate_content.side_effect = [
+            RuntimeError("429 RESOURCE_EXHAUSTED: Please retry in 7.0s"),
+            mock_resp,
+        ]
+        mock_genai_cls.return_value = mock_genai
+
+        client = LLMClient()
+        res = client._generate_with_retry([], MagicMock())
+
+        assert res.text == "Success after retry"
+        assert mock_sleep.called
+        # Verify user was notified via console
+        assert mock_print.called
+        printed_text = str(mock_print.call_args)
+        assert "Pausing" in printed_text or "rate limit" in printed_text.lower()
+
