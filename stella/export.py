@@ -60,8 +60,8 @@ def export_html_dossier(state: SessionState, output_dir: Path | str = Path("expo
     # Simple bold formatting
     import re
     formatted_rec = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", formatted_rec)
-    formatted_rec = re.sub(r"### (.+?)(<br>|$)", r"<h3 class='rec-heading'>\1</h3>", formatted_rec)
-    formatted_rec = re.sub(r"- (.+?)(<br>|$)", r"<li class='rec-bullet'>\1</li>", formatted_rec)
+    formatted_rec = re.sub(r"(^|<br>)###\s+(.+?)(?=<br>|$)", r"\1<h3 class='rec-heading'>\2</h3>", formatted_rec)
+    formatted_rec = re.sub(r"(^|<br>)(?:-|\*)\s+(.+?)(?=<br>|$)", r"\1<li class='rec-bullet'>\2</li>", formatted_rec)
 
     confidence = round(state.confidence, 1)
     confidence_color = "#10b981" if confidence >= 80 else ("#f59e0b" if confidence >= 50 else "#ef4444")
