@@ -58,29 +58,6 @@ pytest -v
 
 ---
 
-## Key Features & Highlights
-
-### 1. Tailored Expertise Onboarding (Step 0)
-At session launch, users select their background:
-- **[a] Professional / Industry Insider:** Technical styling vocabulary (darting, bias cut, ease, fabrication).
-- **[b] Fashion Novice:** Simple, welcoming, plain-language guidance without industry jargon.
-- **[c] Everyday Shopper:** Practical, actionable fit advice with intuitive explanations.
-
-### 2. Built-in Measurement Guide & Size Reference Table (Q1)
-- Rich terminal table displaying how to measure bust, waist, and hips.
-- Reference chart mapping XS–XL, US 0–18, and bust-waist-hips ranges in both inches and centimeters.
-- Clear support for off-the-rack size labels if physical measurements are unavailable.
-
-### 3. Deterministic Mixed-Unit Normalization & Multi-Unit Recommendations
-- Supports mixed inputs (e.g., *Bust: 90cm, Waist: 0.7m, Hips: 36 inches*).
-- Deterministic Python math normalizes all inputs into standardized dual representations (`inches` & `cm`).
-- Final recommendation provides complete multi-unit sizing (US, UK, EU, International Alpha XS-XL, and garment dimensions in both inches and cm).
-
-### 4. Interactive UX Loading Spinners
-- Rich `console.status` animated spinners during all AI reasoning and extraction turns prevent perceived UI freezes.
-
----
-
 ## Model Choice & Cascade Resilience
 
 **Primary Active Model:** `gemini-3.5-flash`
