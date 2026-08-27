@@ -167,4 +167,64 @@ def test_failure_mode_6_all_models_quota_exhausted_graceful_exit():
         assert mock_quota_display.call_args[0][0] == state.session_id
 
 
+def test_failure_mode_7_out_of_bounds_measurement_retry_guidance():
+    """Behavior 7: When user enters impossible/extreme numbers on attempt 1 (e.g. 999m),
+    Stella detects out-of-bounds, gives a polite retry warning with standard ranges,
+    and asks for valid input on attempt 2."""
+    inputs = iter([
+        "bust 999 meters, waist 500 inches, hips -10 cm",  # Impossible -> out of bounds
+        "bust 34 inches, waist 26 inches, hips 36 inches",  # Valid second attempt
+    ])
+
+    state = SessionState(user_expertise="novice")
+
+    with patch("stella.agent.LLMClient") as mock_client_cls, \
+         patch("stella.agent.display_measurement_out_of_bounds_warning") as mock_warning:
+
+        mock_client = MagicMock()
+        mock_client.chat.return_value = "Let's check your measurements."
+        mock_client.extract.side_effect = [
+            {"bust_value": 999.0, "bust_unit": "m", "waist_value": 500.0, "waist_unit": "in", "hips_value": -10.0, "hips_unit": "cm", "detail_level": "high"},
+            {"bust_value": 34.0, "bust_unit": "in", "waist_value": 26.0, "waist_unit": "in", "hips_value": 36.0, "hips_unit": "in", "detail_level": "high"},
+        ]
+        mock_client.recommend.return_value = "Here is your recommendation."
+        mock_client_cls.return_value = mock_client
+
+        final_state = run_consultation(state=state, input_fn=lambda: next(inputs, ""))
+
+        assert mock_warning.called
+        assert final_state.measurements.bust_in == 34.0
+        assert final_state.attempts_per_step[1] == 2
+
+
+def test_failure_mode_8_out_of_bounds_measurement_termination_on_repeat():
+    """Behavior 8: When user intentionally enters invalid/impossible measurements twice,
+    Stella terminates the session politely with a kind explanatory message and saves progress."""
+    inputs = iter([
+        "bust 999 meters",  # Attempt 1 -> invalid
+        "bust -50 inches",  # Attempt 2 -> still invalid -> terminates
+    ])
+
+    state = SessionState(user_expertise="novice")
+
+    with patch("stella.agent.LLMClient") as mock_client_cls, \
+         patch("stella.agent.display_invalid_measurements_termination") as mock_term:
+
+        mock_client = MagicMock()
+        mock_client.chat.return_value = "Please share measurements."
+        mock_client.extract.side_effect = [
+            {"bust_value": 999.0, "bust_unit": "m", "detail_level": "high"},
+            {"bust_value": -50.0, "bust_unit": "in", "detail_level": "high"},
+        ]
+        mock_client_cls.return_value = mock_client
+
+        final_state = run_consultation(state=state, input_fn=lambda: next(inputs, ""))
+
+        assert mock_term.called
+        # Should stop without generating recommendation (step remains 1)
+        assert final_state.current_step == 1
+        assert final_state.attempts_per_step[1] == 2
+
+
+
 

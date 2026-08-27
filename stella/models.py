@@ -87,6 +87,31 @@ class MeasurementData(BaseModel):
         self.hips = h_in
         self.unit = "inches"
 
+    def has_out_of_bounds_measurements(self) -> tuple[bool, str]:
+        """Validate if normalized measurements fall within realistic human sizing ranges.
+
+        Ranges:
+            Bust:  20.0 in (50.8 cm) - 75.0 in (190.5 cm)
+            Waist: 18.0 in (45.7 cm) - 70.0 in (177.8 cm)
+            Hips:  22.0 in (55.8 cm) - 85.0 in (215.9 cm)
+
+        Returns:
+            tuple[bool, str]: (is_invalid, explanation_message)
+        """
+        if self.bust_in is not None:
+            if self.bust_in < 20.0 or self.bust_in > 75.0:
+                return True, f"Bust measurement ({self.bust_in}\" / {self.bust_cm} cm) is outside realistic tailoring ranges (20–75 in / 50–190 cm)."
+
+        if self.waist_in is not None:
+            if self.waist_in < 18.0 or self.waist_in > 70.0:
+                return True, f"Waist measurement ({self.waist_in}\" / {self.waist_cm} cm) is outside realistic tailoring ranges (18–70 in / 45–180 cm)."
+
+        if self.hips_in is not None:
+            if self.hips_in < 22.0 or self.hips_in > 85.0:
+                return True, f"Hip measurement ({self.hips_in}\" / {self.hips_cm} cm) is outside realistic tailoring ranges (22–85 in / 55–215 cm)."
+
+        return False, ""
+
 
 class FitPreferenceData(BaseModel):
     """Extracted data from Question 2: Fit preferences and body silhouette."""

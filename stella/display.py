@@ -327,6 +327,57 @@ def display_quota_exhausted(session_id: str) -> None:
     console.print()
 
 
+def display_measurement_out_of_bounds_warning(issue_desc: str) -> None:
+    """Display a polite warning and retry guidance when measurements are outside realistic ranges."""
+    msg = Text()
+    msg.append("⚠️  Measurement Verification Notice\n\n", style="bold yellow")
+    msg.append(f"{issue_desc}\n\n", style="white")
+    msg.append("Please enter your measurements within realistic human tailoring ranges:\n", style="bold cyan")
+    msg.append("  • Bust:  20–75 in (50–190 cm)\n", style="dim")
+    msg.append("  • Waist: 18–70 in (45–180 cm)\n", style="dim")
+    msg.append("  • Hips:  22–85 in (55–215 cm)\n\n", style="dim")
+    msg.append("Let's try one more time so Stella can recommend the exact right fit for you! ✨", style="bold deep_pink3")
+
+    panel = Panel(
+        msg,
+        title="[bold yellow]Measurement Verification[/bold yellow]",
+        border_style="yellow",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print()
+    console.print(panel)
+    console.print()
+
+
+def display_invalid_measurements_termination(session_id: str) -> None:
+    """Display a polite, kind farewell when repeated impossible measurements prevent accurate styling."""
+    msg = Text()
+    msg.append("✨ Consultation Concluded ✨\n\n", style="bold deep_pink3")
+    msg.append(
+        "To ensure we provide safe, accurate, and high-quality styling dossiers, "
+        "Stella requires realistic tailoring measurements.\n\n",
+        style="white",
+    )
+    msg.append(
+        f"Your session has been saved (Session ID: {session_id}).\n"
+        "Whenever you're ready with your measurements or brand sizes, we would love to welcome you back!\n\n",
+        style="cyan",
+    )
+    msg.append("Wishing you confidence and wonderful style ahead! 👗✨", style="italic deep_pink3")
+
+    panel = Panel(
+        msg,
+        title="[bold magenta]Thank You from Stella[/bold magenta]",
+        border_style="magenta",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print()
+    console.print(panel)
+    console.print()
+
+
 def display_goodbye() -> None:
     """Display a styled farewell message when the session ends."""
     goodbye_text = Text(
@@ -350,7 +401,9 @@ __all__ = [
     "display_confidence_bar",
     "display_error",
     "display_goodbye",
+    "display_invalid_measurements_termination",
     "display_measurement_guide",
+    "display_measurement_out_of_bounds_warning",
     "display_quota_exhausted",
     "display_recommendation",
     "display_state_dump",

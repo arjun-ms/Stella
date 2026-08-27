@@ -16,7 +16,9 @@ from stella.display import (
     display_confidence_bar,
     display_error,
     display_goodbye,
+    display_invalid_measurements_termination,
     display_measurement_guide,
+    display_measurement_out_of_bounds_warning,
     display_quota_exhausted,
     display_recommendation,
     display_state_dump,
@@ -227,9 +229,20 @@ def run_consultation(
 
         parsed = model_class.model_validate(extracted_data)
 
-        # If step 1 (measurements), perform deterministic Python unit normalization
+        # If step 1 (measurements), perform deterministic Python unit normalization & bounds check
         if isinstance(parsed, MeasurementData):
             parsed.normalize_measurements()
+            is_out_of_bounds, issue_desc = parsed.has_out_of_bounds_measurements()
+            if is_out_of_bounds:
+                state.attempts_per_step[step] = state.attempts_per_step.get(step, 0) + 1
+                if state.attempts_per_step[step] < MAX_ATTEMPTS_PER_STEP:
+                    display_measurement_out_of_bounds_warning(issue_desc)
+                    save_session(state)
+                    continue
+                else:
+                    display_invalid_measurements_termination(state.session_id)
+                    save_session(state)
+                    return state
 
         # Check if we need to re-ask (vague answer, first attempt)
         state.attempts_per_step[step] = state.attempts_per_step.get(step, 0) + 1
