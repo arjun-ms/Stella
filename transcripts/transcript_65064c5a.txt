@@ -1,0 +1,11 @@
+Stella: Hi there! Could you share your bust, waist, and hips measurements?
+User: Bust 34 in, waist 27 in, hips 37 in, usually wear a US 4 in Zara
+Stella: Lovely! How do you like your dresses to fit on your body?
+User: I love A-line or wrap dresses that aren't too tight around my stomach
+Stella: What is the occasion and style aesthetic you're looking for?
+User: Summer outdoor garden wedding, romantic floral aesthetic
+Stella: Tell me about a dress you previously bought that fit you wonderfully!
+User: A Reformation wrap dress in size 4 because the waist tie was adjustable
+Stella: ### Recommended Size: US 4 / UK 8 / EU 36
+- **Silhouette**: Soft A-line wrap dress with flutter sleeves
+- **Fabric**: Georgette or silk crepe with fluid drape
