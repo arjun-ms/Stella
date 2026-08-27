@@ -67,7 +67,10 @@ def process_chat_turn(
 
     # Extract structured data
     try:
-        extracted = llm.extract(current_step, user_input)
+        from stella.agent import STEP_CONFIG
+        question_context, model_class, _ = STEP_CONFIG[current_step]
+        schema = model_class.model_json_schema()
+        extracted = llm.extract(current_step, user_input, question_context, schema)
     except Exception as e:
         err_msg = str(e)
         if status_callback:
